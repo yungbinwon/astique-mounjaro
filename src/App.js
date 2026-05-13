@@ -60,8 +60,12 @@ function getStatus(records,idx) {
 }
 function hasAlert(recs) {
   if(recs.length<2) return false;
-  const diff=recs[recs.length-2].weight-recs[recs.length-1].weight;
-  return diff<0.5;
+  const last=recs[recs.length-1], prev=recs[recs.length-2];
+  const days=daysBetween(prev.date,last.date)||7;
+  const diff=prev.weight-last.weight;
+  const perWeek=(diff/days)*7;
+  // alert only if weight went up OR per-week loss < 0.5
+  return diff<0 || perWeek<0.5;
 }
 function hasRedFlag(r) {
   return RED_TRIGGERS.some(t=>(r.foodTags||[]).includes(t))||
@@ -402,9 +406,9 @@ function DoctorView() {
         <button onClick={()=>setSelected(null)} style={secBtnSt}>← กลับ</button>
         <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:20,fontWeight:600,color:C.deep}}>{selected.name}</div>
         {!selected.doctorRead&&hasAlert(recs)&&(
-          <button onClick={async()=>{await markRead(selected.name);setSelected(p=>({...p,doctorRead:true}));}} style={{marginLeft:"auto",padding:"7px 14px",borderRadius:10,border:`1.5px solid ${C.sage}`,background:"transparent",color:C.sage,fontSize:12,fontFamily:"'DM Sans',sans-serif",cursor:"pointer"}}>✓ อ่านแล้ว</button>
+          <button onClick={async()=>{await markRead(selected.name);setSelected(p=>({...p,doctorRead:true}));}} style={{marginLeft:"auto",padding:"9px 16px",borderRadius:10,border:"none",background:C.sage,color:"#fff",fontSize:12,fontFamily:"'DM Sans',sans-serif",cursor:"pointer",fontWeight:600}}>✓ รับทราบข้อมูลแล้ว</button>
         )}
-        {selected.doctorRead&&<span style={{marginLeft:"auto",fontSize:11,color:C.sage}}>✓ อ่านแล้ว</span>}
+        {selected.doctorRead&&<span style={{marginLeft:"auto",fontSize:11,color:C.sage,border:`1px solid ${C.sage}`,borderRadius:8,padding:"4px 10px"}}>✓ รับทราบแล้ว</span>}
       </div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:14}}>
         {[
