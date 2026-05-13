@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, LabelList } from "recharts";
 import { db } from "./firebase";
-import { doc, getDoc, setDoc, collection, getDocs, updateDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc, collection, getDocs, updateDoc, deleteDoc } from "firebase/firestore";
 
 const C = {
   cream:"#FAF7F2",blush:"#EDD9C8",rose:"#C07A58",
@@ -38,6 +38,9 @@ async function fbListAll() {
 }
 async function fbMarkRead(name) {
   try { await updateDoc(doc(db,"patients",name),{doctorRead:true}); return true; } catch { return false; }
+}
+async function fbDelete(name) {
+  try { await deleteDoc(doc(db,"patients",name)); return true; } catch { return false; }
 }
 
 // ── Helpers ───────────────────────────────────────────────
@@ -365,6 +368,7 @@ function DoctorView() {
   const [loading,setLoading]=useState(true);
   const [selected,setSelected]=useState(null);
   const [search,setSearch]=useState("");
+  const [confirmDelete,setConfirmDelete]=useState(false);
 
   async function load() {
     setLoading(true);
@@ -402,14 +406,28 @@ function DoctorView() {
     }):[];
 
     return <div style={{padding:"18px 14px"}}>
-      <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
-        <button onClick={()=>setSelected(null)} style={secBtnSt}>← กลับ</button>
-        <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:20,fontWeight:600,color:C.deep}}>{selected.name}</div>
+      <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16,flexWrap:"wrap"}}>
+        <button onClick={()=>{setSelected(null);setConfirmDelete(false);}} style={secBtnSt}>← กลับ</button>
+        <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:20,fontWeight:600,color:C.deep,flex:1}}>{selected.name}</div>
         {!selected.doctorRead&&hasAlert(recs)&&(
-          <button onClick={async()=>{await markRead(selected.name);setSelected(p=>({...p,doctorRead:true}));}} style={{marginLeft:"auto",padding:"9px 16px",borderRadius:10,border:"none",background:C.sage,color:"#fff",fontSize:12,fontFamily:"'DM Sans',sans-serif",cursor:"pointer",fontWeight:600}}>✓ รับทราบข้อมูลแล้ว</button>
+          <button onClick={async()=>{await markRead(selected.name);setSelected(p=>({...p,doctorRead:true}));}} style={{padding:"9px 16px",borderRadius:10,border:"none",background:C.sage,color:"#fff",fontSize:12,fontFamily:"'DM Sans',sans-serif",cursor:"pointer",fontWeight:600}}>✓ รับทราบแล้ว</button>
         )}
-        {selected.doctorRead&&<span style={{marginLeft:"auto",fontSize:11,color:C.sage,border:`1px solid ${C.sage}`,borderRadius:8,padding:"4px 10px"}}>✓ รับทราบแล้ว</span>}
+        {selected.doctorRead&&<span style={{fontSize:11,color:C.sage,border:`1px solid ${C.sage}`,borderRadius:8,padding:"4px 10px"}}>✓ รับทราบแล้ว</span>}
       </div>
+      {/* Delete section */}
+      {!confirmDelete
+        ?<button onClick={()=>setConfirmDelete(true)} style={{...secBtnSt,width:"100%",marginBottom:14,color:C.alert,borderColor:C.alert,textAlign:"center"}}>🗑️ ลบข้อมูลคนไข้คนนี้</button>
+        :<div style={{background:"rgba(201,59,59,0.07)",border:`1.5px solid ${C.alert}`,borderRadius:12,padding:"14px 16px",marginBottom:14}}>
+          <div style={{fontSize:13,color:C.alert,fontWeight:600,marginBottom:10}}>⚠️ ยืนยันลบข้อมูลของ "{selected.name}" ?</div>
+          <div style={{fontSize:12,color:C.muted,marginBottom:12}}>ข้อมูลจะถูกลบถาวร ไม่สามารถกู้คืนได้</div>
+          <div style={{display:"flex",gap:8}}>
+            <button onClick={()=>setConfirmDelete(false)} style={{...secBtnSt,flex:1,textAlign:"center"}}>ยกเลิก</button>
+            <button onClick={async()=>{
+              const ok=await fbDelete(selected.name);
+              if(ok){setAllPatients(prev=>prev.filter(p=>p.name!==selected.name));setSelected(null);setConfirmDelete(false);}
+            }} style={{flex:1,padding:"10px",borderRadius:10,border:"none",background:C.alert,color:"#fff",fontSize:13,fontFamily:"'DM Sans',sans-serif",cursor:"pointer",fontWeight:600}}>🗑️ ลบถาวร</button>
+          </div>
+        </div>}
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:14}}>
         {[
           {val:recs.length,label:"บันทึก"},
