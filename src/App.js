@@ -23,7 +23,7 @@ const FOOD_OPTIONS = [
   "ผลไม้","เครื่องดื่มรสหวาน","โปรตีนชง","ของทอด","วิตามินบี","สเตียรอยด์","อื่นๆ",
 ];
 const DOSE_OPTIONS = ["2.5 mg","5 mg","7.5 mg","10 mg","12.5 mg","15 mg","อื่นๆ"];
-const DOCTOR_PIN = "1234";
+const DOCTOR_PIN = "49338";
 const RED_TRIGGERS = ["ผลไม้","เครื่องดื่มรสหวาน","ของทอด","วิตามินบี","สเตียรอยด์"];
 
 // ── Firebase ──────────────────────────────────────────────
@@ -473,6 +473,22 @@ function DoctorView() {
       <div style={{width:36,height:36,borderRadius:"50%",background:alertCount>0?C.alert:C.sage,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:700,color:"#fff",flexShrink:0}}>{alertCount}</div>
     </div>
 
+    {/* Alert banner */}
+    {alertCount>0&&<div style={{background:"rgba(201,59,59,0.08)",border:`1.5px solid ${C.alert}`,borderRadius:14,padding:"14px 16px",marginBottom:14}}>
+      <div style={{fontSize:13,color:C.alert,fontWeight:600,marginBottom:6}}>🔔 แจ้งเตือน — {alertCount} คนไข้น้ำหนักไม่ลดตามเป้า</div>
+      {allPatients.filter(p=>hasAlert(p.records||[])&&!p.doctorRead).map(p=>{
+        const recs=p.records||[]; const last=recs[recs.length-1]; const prev=recs[recs.length-2];
+        const diff=prev&&last?prev.weight-last.weight:null;
+        return <div key={p.name} onClick={()=>setSelected(p)} style={{cursor:"pointer",padding:"8px 10px",borderRadius:10,background:"rgba(201,59,59,0.07)",marginBottom:6,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <div>
+            <div style={{fontSize:13,fontWeight:600,color:C.deep}}>{p.name}</div>
+            <div style={{fontSize:11,color:C.muted}}>{diff!==null?diff>=0?`น้ำหนักลดเพียง −${diff.toFixed(1)} กก.`:`น้ำหนักขึ้น +${Math.abs(diff).toFixed(1)} กก.`:""} · 💉 {last?.dose==="อื่นๆ"?last?.doseOther:last?.dose}</div>
+          </div>
+          <span style={{fontSize:12,color:C.alert}}>ดูข้อมูล →</span>
+        </div>;
+      })}
+    </div>}
+
     {/* Search */}
     <div style={{marginBottom:12,position:"relative"}}>
       <span style={{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",fontSize:16,color:C.muted}}>🔍</span>
@@ -523,14 +539,14 @@ function DoctorView() {
 function DoctorPinScreen({onUnlock}) {
   const [pin,setPin]=useState(""); const [shake,setShake]=useState(false);
   function tryPin(p){if(p===DOCTOR_PIN){onUnlock();}else{setShake(true);setTimeout(()=>{setShake(false);setPin("");},600);}}
-  function press(v){if(pin.length>=4)return;const next=pin+v;setPin(next);if(next.length===4)tryPin(next);}
+  function press(v){if(pin.length>=5)return;const next=pin+v;setPin(next);if(next.length===5)tryPin(next);}
   return <div style={{padding:"40px 32px",display:"flex",flexDirection:"column",alignItems:"center"}}>
     <div style={{fontSize:40,marginBottom:16}}>👩‍⚕️</div>
     <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:22,color:C.deep,marginBottom:6}}>หมอทิพย์</div>
     <div style={{fontSize:13,color:C.muted,marginBottom:32}}>ใส่ PIN เพื่อเข้าโหมดหมอ</div>
     <style>{`@keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-8px)}80%{transform:translateX(4px)}}`}</style>
     <div style={{display:"flex",gap:16,marginBottom:36,animation:shake?"shake .4s":"none"}}>
-      {[0,1,2,3].map(i=><div key={i} style={{width:14,height:14,borderRadius:"50%",background:i<pin.length?C.rose:"transparent",border:`2px solid ${i<pin.length?C.rose:C.blush}`,transition:"all .15s"}}/>)}
+      {[0,1,2,3,4].map(i=><div key={i} style={{width:14,height:14,borderRadius:"50%",background:i<pin.length?C.rose:"transparent",border:`2px solid ${i<pin.length?C.rose:C.blush}`,transition:"all .15s"}}/>)}
     </div>
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12,width:"100%",maxWidth:260}}>
       {["1","2","3","4","5","6","7","8","9","","0","⌫"].map((k,i)=>(
