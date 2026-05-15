@@ -43,6 +43,33 @@ async function fbDelete(name) {
   try { await deleteDoc(doc(db,"patients",name)); return true; } catch { return false; }
 }
 
+// ── Stock Firebase ───────────────────────────────────────
+const STOCK_DOSES = ["5 mg","7.5 mg","10 mg","15 mg"];
+async function fbGetStock() {
+  try { const s=await getDoc(doc(db,"stock","mounjaro")); return s.exists()?s.data():{} ; } catch { return {}; }
+}
+async function fbSetStock(data) {
+  try { await setDoc(doc(db,"stock","mounjaro"),data); return true; } catch { return false; }
+}
+
+// ── Order Firebase ────────────────────────────────────────
+async function fbGetOrders() {
+  try { const s=await getDocs(collection(db,"orders")); return s.docs.map(d=>({id:d.id,...d.data()})); } catch { return []; }
+}
+async function fbAddOrder(order) {
+  try {
+    const id="order_"+Date.now();
+    await setDoc(doc(db,"orders",id),{...order,id,createdAt:new Date().toISOString(),status:"pending"});
+    return true;
+  } catch(e) { console.error(e); return false; }
+}
+async function fbUpdateOrder(id,updates) {
+  try { await updateDoc(doc(db,"orders",id),updates); return true; } catch { return false; }
+}
+async function fbDeleteOrder(id) {
+  try { await deleteDoc(doc(db,"orders",id)); return true; } catch { return false; }
+}
+
 // ── Helpers ───────────────────────────────────────────────
 function todayStr() { return new Date().toISOString().split("T")[0]; }
 function fmtDateTH(d) {
@@ -557,6 +584,200 @@ function DoctorView() {
   </div>;
 }
 
+// ── StockView ─────────────────────────────────────────────
+function StockView({showToast}) {
+  const [stock,setStock]=useState({});
+  const [loading,setLoading]=useState(true);
+  const [editing,setEditing]=useState(false);
+  const [draft,setDraft]=useState({});
+
+  async function load(){setLoading(true);const data=await fbGetStock();setStock(data);setLoading(false);}
+  useEffect(()=>{load();},[]);
+
+  async function save(){const ok=await fbSetStock(draft);if(!ok)return showToast("บันทึกไม่สำเร็จ");setStock(draft);setEditing(false);showToast("✓ อัพเดท Stock แล้ว");}
+  function startEdit(){const d={};STOCK_DOSES.forEach(dose=>{d[dose]=stock[dose]||0;});setDraft(d);setEditing(true);}
+
+  if(loading) return <div style={{textAlign:"center",padding:40,color:C.muted}}>กำลังโหลด...</div>;
+
+  return <div style={{padding:"18px 14px"}}>
+    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
+      <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:20,fontWeight:600,color:C.deep}}>💊 Stock Mounjaro</div>
+      {!editing
+        ?<button onClick={startEdit} style={{...secBtnSt,fontSize:12}}>✏️ แก้ไข</button>
+        :<div style={{display:"flex",gap:8}}>
+          <button onClick={()=>setEditing(false)} style={{...secBtnSt,fontSize:12}}>ยกเลิก</button>
+          <button onClick={save} style={{padding:"9px 16px",borderRadius:10,border:"none",background:C.rose,color:"#fff",fontSize:12,fontFamily:"'DM Sans',sans-serif",cursor:"pointer",fontWeight:600}}>บันทึก</button>
+        </div>}
+    </div>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+      {STOCK_DOSES.map(dose=>{
+        const qty=editing?draft[dose]||0:stock[dose]||0;
+        const low=qty<=2,out=qty===0;
+        return <div key={dose} style={{...cardSt,marginBottom:0,border:`1.5px solid ${out?C.alert:low?C.gold:C.blush}`,background:out?"rgba(201,59,59,0.04)":low?"rgba(196,153,62,0.04)":C.card}}>
+          <div style={{fontSize:11,color:C.muted,marginBottom:2}}>Mounjaro</div>
+          <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:20,fontWeight:600,color:C.deep,marginBottom:8}}>{dose}</div>
+          {editing
+            ?<div style={{display:"flex",alignItems:"center",gap:6}}>
+              <button onClick={()=>setDraft(d=>({...d,[dose]:Math.max(0,(d[dose]||0)-1)}))} style={{width:30,height:30,borderRadius:8,border:`1px solid ${C.blush}`,background:"transparent",fontSize:16,cursor:"pointer"}}>−</button>
+              <input type="number" inputMode="numeric" style={{...inputSt,textAlign:"center",padding:"4px",width:50,fontSize:16,fontWeight:600}} value={draft[dose]||0} onChange={e=>setDraft(d=>({...d,[dose]:Math.max(0,parseInt(e.target.value)||0)}))}/>
+              <button onClick={()=>setDraft(d=>({...d,[dose]:(d[dose]||0)+1}))} style={{width:30,height:30,borderRadius:8,border:`1px solid ${C.blush}`,background:"transparent",fontSize:16,cursor:"pointer"}}>+</button>
+            </div>
+            :<div style={{display:"flex",alignItems:"baseline",gap:6}}>
+              <span style={{fontFamily:"'Cormorant Garamond',serif",fontSize:30,fontWeight:600,color:out?C.alert:low?C.gold:C.deep}}>{qty}</span>
+              <span style={{fontSize:12,color:C.muted}}>หลอด</span>
+              {out&&<span style={{fontSize:11,color:C.alert,fontWeight:600}}>หมด!</span>}
+              {low&&!out&&<span style={{fontSize:11,color:C.gold,fontWeight:600}}>เหลือน้อย</span>}
+            </div>}
+        </div>;
+      })}
+    </div>
+  </div>;
+}
+
+// ── OrderView ─────────────────────────────────────────────
+const ORDER_STATUS = {
+  pending:  {label:"รอยืนยันยอด",  color:"#C4993E", bg:"rgba(196,153,62,0.1)",  emoji:"🟡"},
+  confirmed:{label:"ยืนยันแล้ว/รอโอน", color:"#C07A58", bg:"rgba(192,122,88,0.1)", emoji:"🟠"},
+  paid:     {label:"โอนแล้ว/รอดำเนินการ", color:"#6B6B9B", bg:"rgba(107,107,155,0.1)", emoji:"💜"},
+  clinic:   {label:"นัดมาคลินิก",  color:"#6B9B82", bg:"rgba(107,155,130,0.1)", emoji:"🏥"},
+  shipping: {label:"รอจัดส่ง",     color:"#C07A58", bg:"rgba(192,122,88,0.1)",  emoji:"📦"},
+  done:     {label:"เสร็จสิ้น",    color:"#9A8478", bg:"rgba(154,132,120,0.1)", emoji:"✅"},
+};
+
+function OrderView({showToast}) {
+  const [orders,setOrders]=useState([]);
+  const [loading,setLoading]=useState(true);
+  const [filter,setFilter]=useState("active");
+  const [expandId,setExpandId]=useState(null);
+  const [orderTab,setOrderTab]=useState("orders");
+
+  async function load(){
+    setLoading(true);
+    const data=await fbGetOrders();
+    data.sort((a,b)=>{
+      const priority={pending:0,paid:1,confirmed:2,clinic:3,shipping:4,done:5};
+      return (priority[a.status]||0)-(priority[b.status]||0)||(new Date(b.createdAt)-new Date(a.createdAt));
+    });
+    setOrders(data);
+    setLoading(false);
+  }
+  useEffect(()=>{load();},[]);
+
+  async function updateStatus(id,status,dose){
+    await fbUpdateOrder(id,{status,updatedAt:new Date().toISOString()});
+    if(status==="done"&&dose){
+      const matchDose=STOCK_DOSES.find(d=>dose.includes(d));
+      if(matchDose){
+        const stock=await fbGetStock();
+        const cur=stock[matchDose]||0;
+        if(cur>0){await fbSetStock({...stock,[matchDose]:cur-1});showToast(`✓ เสร็จสิ้น — ตัด ${matchDose} 1 หลอด`);}
+        else showToast("⚠️ Stock หมด! กรุณาเติม Stock");
+        setOrders(prev=>prev.map(o=>o.id===id?{...o,status}:o));
+        return;
+      }
+    }
+    setOrders(prev=>prev.map(o=>o.id===id?{...o,status}:o));
+    showToast("✓ อัพเดทสถานะแล้ว");
+  }
+
+  async function deleteOrder(id){await fbDeleteOrder(id);setOrders(prev=>prev.filter(o=>o.id!==id));showToast("ลบ Order แล้ว");}
+
+  const pending=orders.filter(o=>o.status==="pending").length;
+  const paid=orders.filter(o=>o.status==="paid").length;
+  const activeCount=orders.filter(o=>!["done"].includes(o.status)).length;
+  const urgent=pending+paid;
+
+  const filtered=filter==="active"
+    ?orders.filter(o=>o.status!=="done")
+    :filter==="done"?orders.filter(o=>o.status==="done")
+    :orders.filter(o=>o.status===filter);
+
+  const fmtDate=d=>new Date(d).toLocaleDateString("th-TH",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"});
+
+  return <div style={{padding:"18px 14px"}}>
+    {/* Sub tabs */}
+    <div style={{display:"flex",gap:8,marginBottom:14}}>
+      {[{id:"orders",label:"📦 Order"},{id:"stock",label:"💊 Stock"}].map(t=>{
+        const on=orderTab===t.id;
+        return <button key={t.id} onClick={()=>setOrderTab(t.id)} style={{flex:1,padding:"9px",borderRadius:10,fontSize:13,border:`1.5px solid ${on?C.rose:C.blush}`,background:on?C.rose:"transparent",color:on?"#fff":C.muted,fontFamily:"'DM Sans',sans-serif",cursor:"pointer",fontWeight:on?600:400}}>{t.label}</button>;
+      })}
+    </div>
+
+    {orderTab==="stock"&&<StockView showToast={showToast}/>}
+
+    {orderTab==="orders"&&<>
+      {/* Alert banner */}
+      {urgent>0&&<div style={{background:"rgba(201,59,59,0.07)",border:`1.5px solid ${C.alert}`,borderRadius:12,padding:"12px 14px",marginBottom:14}}>
+        <div style={{fontSize:13,color:C.alert,fontWeight:600}}>
+          🔔 มี {urgent} order รอดำเนินการ
+          {pending>0&&<span> · 🟡 รอยืนยัน {pending}</span>}
+          {paid>0&&<span> · 💜 โอนแล้ว {paid}</span>}
+        </div>
+      </div>}
+
+      {/* Filter */}
+      <div style={{display:"flex",gap:6,marginBottom:12,overflowX:"auto",paddingBottom:2}}>
+        {[
+          {id:"active",label:`ทั้งหมด (${activeCount})`},
+          {id:"pending",label:`🟡 รอยืนยัน (${pending})`},
+          {id:"paid",label:`💜 โอนแล้ว (${paid})`},
+          {id:"shipping",label:"📦 รอส่ง"},
+          {id:"done",label:"✅ เสร็จ"},
+        ].map(f=>{
+          const on=filter===f.id;
+          return <button key={f.id} onClick={()=>setFilter(f.id)} style={{padding:"7px 12px",borderRadius:20,fontSize:11,border:`1.5px solid ${on?C.rose:C.blush}`,background:on?C.rose:"transparent",color:on?"#fff":C.muted,fontFamily:"'DM Sans',sans-serif",cursor:"pointer",whiteSpace:"nowrap",fontWeight:on?600:400}}>{f.label}</button>;
+        })}
+      </div>
+
+      <button onClick={load} style={{...secBtnSt,width:"100%",textAlign:"center",fontSize:12,marginBottom:12}}>{loading?"กำลังโหลด...":"🔄 รีเฟรช"}</button>
+
+      {loading
+        ?<div style={{textAlign:"center",padding:40,color:C.muted}}>กำลังโหลด...</div>
+        :filtered.length===0
+          ?<div style={{textAlign:"center",padding:40,color:"#ccc"}}><div style={{fontSize:36,marginBottom:8}}>📭</div><div style={{fontSize:13}}>ไม่มี order</div></div>
+          :filtered.map(o=>{
+            const st=ORDER_STATUS[o.status]||ORDER_STATUS.pending;
+            const isExp=expandId===o.id;
+            return <div key={o.id} style={{...cardSt,borderLeft:`4px solid ${st.color}`,paddingLeft:14,marginBottom:10}}>
+              <div onClick={()=>setExpandId(isExp?null:o.id)} style={{cursor:"pointer"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+                  <div style={{flex:1}}>
+                    <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:18,fontWeight:600,color:C.deep}}>{o.name}</div>
+                    <div style={{fontSize:12,color:C.muted,marginTop:2}}>
+                      💉 {o.dose} × {o.qty||1} หลอด
+                      {o.total?` · ฿${parseInt(o.total).toLocaleString()}`:""}
+                      {" · "}{o.type==="มาฉีดที่คลินิก"?"🏥":"📦"} {o.type}
+                    </div>
+                    <div style={{fontSize:11,color:"#bbb",marginTop:2}}>📅 {fmtDate(o.createdAt)}</div>
+                  </div>
+                  <div style={{textAlign:"right",flexShrink:0,marginLeft:8}}>
+                    <span style={{fontSize:11,fontWeight:600,padding:"4px 8px",borderRadius:20,background:st.bg,color:st.color,display:"block"}}>{st.emoji} {st.label}</span>
+                    <div style={{fontSize:10,color:C.muted,marginTop:4}}>{isExp?"▲ ซ่อน":"▼ ดูเพิ่ม"}</div>
+                  </div>
+                </div>
+              </div>
+
+              {isExp&&<div style={{marginTop:12,paddingTop:12,borderTop:`1px solid ${C.blush}`}}>
+                {o.phone&&<div style={{fontSize:12,color:C.muted,marginBottom:6}}>📱 {o.phone}</div>}
+                {o.address&&o.address!=="มาฉีดที่คลินิก"&&<div style={{fontSize:12,color:C.muted,marginBottom:6}}>📍 {o.address}</div>}
+                {o.note&&<div style={{fontSize:12,color:"#bbb",marginBottom:10}}>📝 {o.note}</div>}
+
+                <div style={{fontSize:11,color:C.muted,fontWeight:600,marginBottom:8}}>เปลี่ยนสถานะ:</div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
+                  {o.status!=="confirmed"&&o.status!=="done"&&<button onClick={()=>updateStatus(o.id,"confirmed",o.dose)} style={{padding:"9px",borderRadius:8,border:`1px solid ${C.gold}`,background:"transparent",color:C.gold,fontSize:11,fontFamily:"'DM Sans',sans-serif",cursor:"pointer",fontWeight:600}}>🟠 ยืนยันยอดแล้ว</button>}
+                  {o.status!=="paid"&&o.status!=="done"&&<button onClick={()=>updateStatus(o.id,"paid",o.dose)} style={{padding:"9px",borderRadius:8,border:"1px solid #6B6B9B",background:"transparent",color:"#6B6B9B",fontSize:11,fontFamily:"'DM Sans',sans-serif",cursor:"pointer",fontWeight:600}}>💜 รับสลิปแล้ว</button>}
+                  {o.status!=="clinic"&&o.status!=="done"&&o.type==="มาฉีดที่คลินิก"&&<button onClick={()=>updateStatus(o.id,"clinic",o.dose)} style={{padding:"9px",borderRadius:8,border:`1px solid ${C.sage}`,background:"transparent",color:C.sage,fontSize:11,fontFamily:"'DM Sans',sans-serif",cursor:"pointer",fontWeight:600}}>🏥 นัดมาคลินิก</button>}
+                  {o.status!=="shipping"&&o.status!=="done"&&o.type==="จัดส่งทางไปรษณีย์"&&<button onClick={()=>updateStatus(o.id,"shipping",o.dose)} style={{padding:"9px",borderRadius:8,border:`1px solid ${C.rose}`,background:"transparent",color:C.rose,fontSize:11,fontFamily:"'DM Sans',sans-serif",cursor:"pointer",fontWeight:600}}>📦 กำลังจัดส่ง</button>}
+                  {o.status!=="done"&&<button onClick={()=>updateStatus(o.id,"done",o.dose)} style={{padding:"9px",borderRadius:8,border:"none",background:C.sage,color:"#fff",fontSize:11,fontFamily:"'DM Sans',sans-serif",cursor:"pointer",fontWeight:600}}>✅ เสร็จสิ้น</button>}
+                </div>
+                <button onClick={()=>{if(window.confirm(`ลบ order ของ ${o.name}?`))deleteOrder(o.id);}} style={{width:"100%",padding:"8px",borderRadius:8,border:`1px solid ${C.alert}`,background:"transparent",color:C.alert,fontSize:11,fontFamily:"'DM Sans',sans-serif",cursor:"pointer"}}>🗑️ ลบ Order นี้</button>
+              </div>}
+            </div>;
+          })}
+    </>}
+  </div>;
+}
+
 // ── DoctorPinScreen ───────────────────────────────────────
 function DoctorPinScreen({onUnlock}) {
   const [pin,setPin]=useState(""); const [shake,setShake]=useState(false);
@@ -647,8 +868,16 @@ export default function App() {
       </>}
 
       {mode==="doctor"&&(doctorUnlocked
-        ?<><div style={{background:C.deep,padding:"0 16px 14px"}}><button style={tabBtnSt(true)}>👩‍⚕️ คนไข้ทั้งหมด</button></div><DoctorView/></>
-        :<DoctorPinScreen onUnlock={()=>setDoctorUnlocked(true)}/>
+        ?<>
+          <div style={{background:C.deep,padding:"0 16px 14px",display:"flex",gap:8}}>
+            {[{id:"patients",label:"👩‍⚕️ คนไข้"},{id:"orders",label:"📦 Order"}].map(t=>(
+              <button key={t.id} style={tabBtnSt(tab===t.id)} onClick={()=>setTab(t.id)}>{t.label}</button>
+            ))}
+          </div>
+          {tab==="patients"&&<DoctorView/>}
+          {tab==="orders"&&<OrderView showToast={showToast}/>}
+        </>
+        :<DoctorPinScreen onUnlock={()=>{setDoctorUnlocked(true);setTab("patients");}}/>
       )}
 
       <Toast msg={toast.msg} show={toast.show}/>
