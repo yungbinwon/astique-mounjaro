@@ -636,12 +636,9 @@ function StockView({showToast}) {
 
 // ── OrderView ─────────────────────────────────────────────
 const ORDER_STATUS = {
-  pending:  {label:"รอยืนยันยอด",  color:"#C4993E", bg:"rgba(196,153,62,0.1)",  emoji:"🟡"},
-  confirmed:{label:"ยืนยันแล้ว/รอโอน", color:"#C07A58", bg:"rgba(192,122,88,0.1)", emoji:"🟠"},
-  paid:     {label:"โอนแล้ว/รอดำเนินการ", color:"#6B6B9B", bg:"rgba(107,107,155,0.1)", emoji:"💜"},
-  clinic:   {label:"นัดมาคลินิก",  color:"#6B9B82", bg:"rgba(107,155,130,0.1)", emoji:"🏥"},
-  shipping: {label:"รอจัดส่ง",     color:"#C07A58", bg:"rgba(192,122,88,0.1)",  emoji:"📦"},
-  done:     {label:"เสร็จสิ้น",    color:"#9A8478", bg:"rgba(154,132,120,0.1)", emoji:"✅"},
+  paid:     {label:"โอนแล้ว — รอจัดส่ง!", color:C.alert,  bg:"rgba(201,59,59,0.08)",    emoji:"🔴"},
+  shipping: {label:"กำลังจัดส่ง",         color:C.rose,   bg:"rgba(192,122,88,0.08)",   emoji:"📦"},
+  done:     {label:"จัดส่งเรียบร้อย",     color:C.sage,   bg:"rgba(107,155,130,0.08)",  emoji:"✅"},
 };
 
 function OrderView({showToast}) {
@@ -655,8 +652,8 @@ function OrderView({showToast}) {
     setLoading(true);
     const data=await fbGetOrders();
     data.sort((a,b)=>{
-      const priority={pending:0,paid:1,confirmed:2,clinic:3,shipping:4,done:5};
-      return (priority[a.status]||0)-(priority[b.status]||0)||(new Date(b.createdAt)-new Date(a.createdAt));
+      const priority={paid:0,shipping:1,done:2};
+      return (priority[a.status]??1)-(priority[b.status]??1)||(new Date(b.createdAt)-new Date(a.createdAt));
     });
     setOrders(data);
     setLoading(false);
@@ -682,10 +679,8 @@ function OrderView({showToast}) {
 
   async function deleteOrder(id){await fbDeleteOrder(id);setOrders(prev=>prev.filter(o=>o.id!==id));showToast("ลบ Order แล้ว");}
 
-  const pending=orders.filter(o=>o.status==="pending").length;
   const paid=orders.filter(o=>o.status==="paid").length;
-  const activeCount=orders.filter(o=>!["done"].includes(o.status)).length;
-  const urgent=pending+paid;
+  const activeCount=orders.filter(o=>o.status!=="done").length;
 
   const filtered=filter==="active"
     ?orders.filter(o=>o.status!=="done")
@@ -706,22 +701,18 @@ function OrderView({showToast}) {
     {orderTab==="stock"&&<StockView showToast={showToast}/>}
 
     {orderTab==="orders"&&<>
-      {/* Alert banner */}
-      {urgent>0&&<div style={{background:"rgba(201,59,59,0.07)",border:`1.5px solid ${C.alert}`,borderRadius:12,padding:"12px 14px",marginBottom:14}}>
-        <div style={{fontSize:13,color:C.alert,fontWeight:600}}>
-          🔔 มี {urgent} order รอดำเนินการ
-          {pending>0&&<span> · 🟡 รอยืนยัน {pending}</span>}
-          {paid>0&&<span> · 💜 โอนแล้ว {paid}</span>}
-        </div>
+      {/* Alert banner — paid orders */}
+      {paid>0&&<div style={{background:"rgba(201,59,59,0.08)",border:`2px solid ${C.alert}`,borderRadius:12,padding:"14px 16px",marginBottom:14}}>
+        <div style={{fontSize:15,color:C.alert,fontWeight:700,marginBottom:4}}>🔴 มี {paid} order โอนแล้ว รอจัดส่ง!</div>
+        <div style={{fontSize:12,color:C.muted}}>กรุณาดำเนินการโดยเร็ว</div>
       </div>}
 
       {/* Filter */}
       <div style={{display:"flex",gap:6,marginBottom:12,overflowX:"auto",paddingBottom:2}}>
         {[
           {id:"active",label:`ทั้งหมด (${activeCount})`},
-          {id:"pending",label:`🟡 รอยืนยัน (${pending})`},
-          {id:"paid",label:`💜 โอนแล้ว (${paid})`},
-          {id:"shipping",label:"📦 รอส่ง"},
+          {id:"paid",label:`🔴 รอจัดส่ง (${paid})`},
+          {id:"shipping",label:"📦 กำลังส่ง"},
           {id:"done",label:"✅ เสร็จ"},
         ].map(f=>{
           const on=filter===f.id;
@@ -744,9 +735,7 @@ function OrderView({showToast}) {
                   <div style={{flex:1}}>
                     <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:18,fontWeight:600,color:C.deep}}>{o.name}</div>
                     <div style={{fontSize:12,color:C.muted,marginTop:2}}>
-                      💉 {o.dose} × {o.qty||1} หลอด
-                      {o.total?` · ฿${parseInt(o.total).toLocaleString()}`:""}
-                      {" · "}{o.type==="มาฉีดที่คลินิก"?"🏥":"📦"} {o.type}
+                      📱 {o.phone}{o.address?` · 📍 ${o.address.slice(0,20)}...`:""}
                     </div>
                     <div style={{fontSize:11,color:"#bbb",marginTop:2}}>📅 {fmtDate(o.createdAt)}</div>
                   </div>
@@ -759,16 +748,20 @@ function OrderView({showToast}) {
 
               {isExp&&<div style={{marginTop:12,paddingTop:12,borderTop:`1px solid ${C.blush}`}}>
                 {o.phone&&<div style={{fontSize:12,color:C.muted,marginBottom:6}}>📱 {o.phone}</div>}
-                {o.address&&o.address!=="มาฉีดที่คลินิก"&&<div style={{fontSize:12,color:C.muted,marginBottom:6}}>📍 {o.address}</div>}
-                {o.note&&<div style={{fontSize:12,color:"#bbb",marginBottom:10}}>📝 {o.note}</div>}
+                {o.address&&<div style={{fontSize:12,color:C.muted,marginBottom:6}}>📍 {o.address}</div>}
+                {o.note&&<div style={{fontSize:12,color:"#bbb",marginBottom:8}}>📝 {o.note}</div>}
+                {o.slipUrl&&<div style={{marginBottom:10}}>
+                  <div style={{fontSize:11,color:C.muted,marginBottom:6,fontWeight:600}}>🧾 สลิปโอนเงิน:</div>
+                  <a href={o.slipUrl} target="_blank" rel="noopener">
+                    <img src={o.slipUrl} alt="สลิป" style={{width:"100%",borderRadius:10,maxHeight:220,objectFit:"cover",border:`1px solid ${C.blush}`}}/>
+                  </a>
+                  <div style={{fontSize:10,color:C.muted,marginTop:4,textAlign:"center"}}>กดรูปเพื่อดูแบบเต็ม</div>
+                </div>}
 
                 <div style={{fontSize:11,color:C.muted,fontWeight:600,marginBottom:8}}>เปลี่ยนสถานะ:</div>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
-                  {o.status!=="confirmed"&&o.status!=="done"&&<button onClick={()=>updateStatus(o.id,"confirmed",o.dose)} style={{padding:"9px",borderRadius:8,border:`1px solid ${C.gold}`,background:"transparent",color:C.gold,fontSize:11,fontFamily:"'DM Sans',sans-serif",cursor:"pointer",fontWeight:600}}>🟠 ยืนยันยอดแล้ว</button>}
-                  {o.status!=="paid"&&o.status!=="done"&&<button onClick={()=>updateStatus(o.id,"paid",o.dose)} style={{padding:"9px",borderRadius:8,border:"1px solid #6B6B9B",background:"transparent",color:"#6B6B9B",fontSize:11,fontFamily:"'DM Sans',sans-serif",cursor:"pointer",fontWeight:600}}>💜 รับสลิปแล้ว</button>}
-                  {o.status!=="clinic"&&o.status!=="done"&&o.type==="มาฉีดที่คลินิก"&&<button onClick={()=>updateStatus(o.id,"clinic",o.dose)} style={{padding:"9px",borderRadius:8,border:`1px solid ${C.sage}`,background:"transparent",color:C.sage,fontSize:11,fontFamily:"'DM Sans',sans-serif",cursor:"pointer",fontWeight:600}}>🏥 นัดมาคลินิก</button>}
-                  {o.status!=="shipping"&&o.status!=="done"&&o.type==="จัดส่งทางไปรษณีย์"&&<button onClick={()=>updateStatus(o.id,"shipping",o.dose)} style={{padding:"9px",borderRadius:8,border:`1px solid ${C.rose}`,background:"transparent",color:C.rose,fontSize:11,fontFamily:"'DM Sans',sans-serif",cursor:"pointer",fontWeight:600}}>📦 กำลังจัดส่ง</button>}
-                  {o.status!=="done"&&<button onClick={()=>updateStatus(o.id,"done",o.dose)} style={{padding:"9px",borderRadius:8,border:"none",background:C.sage,color:"#fff",fontSize:11,fontFamily:"'DM Sans',sans-serif",cursor:"pointer",fontWeight:600}}>✅ เสร็จสิ้น</button>}
+                <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:10}}>
+                  {o.status!=="shipping"&&o.status!=="done"&&<button onClick={()=>updateStatus(o.id,"shipping",o.dose)} style={{padding:"11px",borderRadius:10,border:"none",background:C.rose,color:"#fff",fontSize:13,fontFamily:"'DM Sans',sans-serif",cursor:"pointer",fontWeight:600}}>📦 กำลังจัดส่ง</button>}
+                  {o.status!=="done"&&<button onClick={()=>updateStatus(o.id,"done",o.dose)} style={{padding:"11px",borderRadius:10,border:"none",background:C.sage,color:"#fff",fontSize:13,fontFamily:"'DM Sans',sans-serif",cursor:"pointer",fontWeight:600}}>✅ จัดส่งเรียบร้อยแล้ว</button>}
                 </div>
                 <button onClick={()=>{if(window.confirm(`ลบ order ของ ${o.name}?`))deleteOrder(o.id);}} style={{width:"100%",padding:"8px",borderRadius:8,border:`1px solid ${C.alert}`,background:"transparent",color:C.alert,fontSize:11,fontFamily:"'DM Sans',sans-serif",cursor:"pointer"}}>🗑️ ลบ Order นี้</button>
               </div>}
