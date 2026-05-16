@@ -634,6 +634,49 @@ function StockView({showToast}) {
   </div>;
 }
 
+// ── ShipForm ─────────────────────────────────────────────
+function ShipForm({orderId,dose,currentStatus,onShip}) {
+  const [courier,setCourier]=useState("NIM");
+  const [tracking,setTracking]=useState("");
+  const [saving,setSaving]=useState(false);
+
+  if(currentStatus==="done") return (
+    <div style={{padding:"10px 12px",background:"rgba(107,155,130,0.1)",borderRadius:10,fontSize:12,color:C.sage,fontWeight:600,textAlign:"center"}}>
+      ✅ จัดส่งเรียบร้อยแล้ว
+    </div>
+  );
+
+  return <div>
+    <div style={{fontSize:11,color:C.muted,fontWeight:600,marginBottom:8}}>จัดส่งพัสดุ:</div>
+    <div style={{display:"flex",gap:8,marginBottom:10}}>
+      {["NIM","INTER"].map(c2=>{
+        const on=courier===c2;
+        return <button key={c2} onClick={()=>setCourier(c2)} style={{flex:1,padding:"9px",borderRadius:10,fontSize:12,border:`1.5px solid ${on?C.rose:C.blush}`,background:on?C.rose:"transparent",color:on?"#fff":C.muted,fontFamily:"'DM Sans',sans-serif",cursor:"pointer",fontWeight:on?600:400}}>
+          {c2==="NIM"?"🚚 NIM Express":"📦 INTER Express"}
+        </button>;
+      })}
+    </div>
+    <div style={{marginBottom:10}}>
+      <input
+        style={{...{width:"100%",padding:"11px 13px",border:`1.5px solid ${C.blush}`,borderRadius:10,background:C.cream,color:C.deep,fontFamily:"'DM Sans',sans-serif",fontSize:14,outline:"none",boxSizing:"border-box"}}}
+        placeholder="ใส่เลขพัสดุ..."
+        value={tracking}
+        onChange={e=>setTracking(e.target.value)}
+      />
+    </div>
+    <button
+      onClick={async()=>{
+        if(!tracking.trim()) return alert("กรุณาใส่เลขพัสดุ");
+        setSaving(true);
+        onShip(orderId,courier,tracking.trim(),dose);
+        setSaving(false);
+      }}
+      disabled={saving}
+      style={{width:"100%",padding:"11px",borderRadius:10,border:"none",background:C.sage,color:"#fff",fontSize:13,fontFamily:"'DM Sans',sans-serif",cursor:"pointer",fontWeight:600,opacity:saving?0.7:1}}
+    >✅ ยืนยันจัดส่งเรียบร้อย</button>
+  </div>;
+}
+
 // ── OrderView ─────────────────────────────────────────────
 const ORDER_STATUS = {
   paid:     {label:"โอนแล้ว — รอจัดส่ง!", color:C.alert,  bg:"rgba(201,59,59,0.08)",    emoji:"🔴"},
@@ -660,21 +703,24 @@ function OrderView({showToast}) {
   }
   useEffect(()=>{load();},[]);
 
-  async function updateStatus(id,status,dose){
-    await fbUpdateOrder(id,{status,updatedAt:new Date().toISOString()});
+  async function updateStatus(id,status,dose,courier,tracking){
+    const updates={status,updatedAt:new Date().toISOString()};
+    if(courier) updates.courier=courier;
+    if(tracking) updates.trackingNumber=tracking;
+    await fbUpdateOrder(id,updates);
     if(status==="done"&&dose){
       const matchDose=STOCK_DOSES.find(d=>dose.includes(d));
       if(matchDose){
         const stock=await fbGetStock();
         const cur=stock[matchDose]||0;
-        if(cur>0){await fbSetStock({...stock,[matchDose]:cur-1});showToast(`✓ เสร็จสิ้น — ตัด ${matchDose} 1 หลอด`);}
-        else showToast("⚠️ Stock หมด! กรุณาเติม Stock");
-        setOrders(prev=>prev.map(o=>o.id===id?{...o,status}:o));
+        if(cur>0){await fbSetStock({...stock,[matchDose]:cur-1});showToast(`✅ จัดส่งแล้ว — ตัด ${matchDose} 1 หลอด`);}
+        else showToast("⚠️ Stock หมด! กรุณาเติม");
+        setOrders(prev=>prev.map(o=>o.id===id?{...o,status,...updates}:o));
         return;
       }
     }
-    setOrders(prev=>prev.map(o=>o.id===id?{...o,status}:o));
-    showToast("✓ อัพเดทสถานะแล้ว");
+    setOrders(prev=>prev.map(o=>o.id===id?{...o,status,...updates}:o));
+    showToast("✅ อัพเดทสถานะแล้ว");
   }
 
   async function deleteOrder(id){await fbDeleteOrder(id);setOrders(prev=>prev.filter(o=>o.id!==id));showToast("ลบ Order แล้ว");}
@@ -768,11 +814,10 @@ function OrderView({showToast}) {
                   >⬇️ ดาวน์โหลดสลิป</button>
                 </div>}
 
-                <div style={{fontSize:11,color:C.muted,fontWeight:600,marginBottom:8}}>เปลี่ยนสถานะ:</div>
-                <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:10}}>
-                  {o.status!=="shipping"&&o.status!=="done"&&<button onClick={()=>updateStatus(o.id,"shipping",o.dose)} style={{padding:"11px",borderRadius:10,border:"none",background:C.rose,color:"#fff",fontSize:13,fontFamily:"'DM Sans',sans-serif",cursor:"pointer",fontWeight:600}}>📦 กำลังจัดส่ง</button>}
-                  {o.status!=="done"&&<button onClick={()=>updateStatus(o.id,"done",o.dose)} style={{padding:"11px",borderRadius:10,border:"none",background:C.sage,color:"#fff",fontSize:13,fontFamily:"'DM Sans',sans-serif",cursor:"pointer",fontWeight:600}}>✅ จัดส่งเรียบร้อยแล้ว</button>}
-                </div>
+                <ShipForm orderId={o.id} dose={o.dose} currentStatus={o.status} onShip={(id,courier,tracking,dose)=>{
+                  updateStatus(id,"done",dose,courier,tracking);
+                  setExpandId(null);
+                }}/>
                 <button onClick={()=>{if(window.confirm(`ลบ order ของ ${o.name}?`))deleteOrder(o.id);}} style={{width:"100%",padding:"8px",borderRadius:8,border:`1px solid ${C.alert}`,background:"transparent",color:C.alert,fontSize:11,fontFamily:"'DM Sans',sans-serif",cursor:"pointer"}}>🗑️ ลบ Order นี้</button>
               </div>}
             </div>;
