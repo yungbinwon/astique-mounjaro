@@ -750,12 +750,22 @@ function OrderView({showToast}) {
                 {o.phone&&<div style={{fontSize:12,color:C.muted,marginBottom:6}}>📱 {o.phone}</div>}
                 {o.address&&<div style={{fontSize:12,color:C.muted,marginBottom:6}}>📍 {o.address}</div>}
                 {o.note&&<div style={{fontSize:12,color:"#bbb",marginBottom:8}}>📝 {o.note}</div>}
-                {o.slipUrl&&<div style={{marginBottom:10}}>
+                {(o.slipBase64||o.slipUrl)&&<div style={{marginBottom:10}}>
                   <div style={{fontSize:11,color:C.muted,marginBottom:6,fontWeight:600}}>🧾 สลิปโอนเงิน:</div>
-                  <a href={o.slipUrl} target="_blank" rel="noopener">
-                    <img src={o.slipUrl} alt="สลิป" style={{width:"100%",borderRadius:10,maxHeight:220,objectFit:"cover",border:`1px solid ${C.blush}`}}/>
-                  </a>
-                  <div style={{fontSize:10,color:C.muted,marginTop:4,textAlign:"center"}}>กดรูปเพื่อดูแบบเต็ม</div>
+                  <img
+                    src={o.slipBase64||o.slipUrl}
+                    alt="สลิป"
+                    style={{width:"100%",borderRadius:10,maxHeight:300,objectFit:"contain",border:`1.5px solid ${C.blush}`,display:"block",background:"#f5f5f5"}}
+                  />
+                  <button
+                    onClick={()=>{
+                      const link=document.createElement("a");
+                      link.href=o.slipBase64||o.slipUrl;
+                      link.download=`สลิป_${o.name}_${o.id}.jpg`;
+                      link.click();
+                    }}
+                    style={{width:"100%",marginTop:8,padding:"9px",borderRadius:10,border:`1.5px solid ${C.rose}`,background:"transparent",color:C.rose,fontSize:12,fontFamily:"'DM Sans',sans-serif",cursor:"pointer",fontWeight:600}}
+                  >⬇️ ดาวน์โหลดสลิป</button>
                 </div>}
 
                 <div style={{fontSize:11,color:C.muted,fontWeight:600,marginBottom:8}}>เปลี่ยนสถานะ:</div>
