@@ -137,10 +137,17 @@
     <div class="info-row"><span class="lbl">เบอร์</span><span class="val" id="sPhone"></span></div>
     <div class="info-row"><span class="lbl">ที่อยู่</span><span class="val" id="sAddr"></span></div>
   </div>
+  <div class="info-box" style="background:rgba(196,153,62,0.06);border:1.5px solid #C4993E;margin-bottom:14px">
+    <div style="font-size:11px;color:#C4993E;font-weight:600;text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px">หมายเลข Order ของคุณ</div>
+    <div id="sOrderId" style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;color:#2E1F14;margin-bottom:10px;word-break:break-all"></div>
+    <button onclick="navigator.clipboard.writeText(document.getElementById('sOrderId').textContent).then(()=>alert('คัดลอกแล้ว!'))" style="width:100%;padding:10px;border-radius:10px;border:1.5px solid #C4993E;background:transparent;color:#C4993E;font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;font-weight:600">📋 คัดลอกหมายเลข Order</button>
+  </div>
+  <a id="trackLink" href="#" style="display:block;width:100%;padding:13px;border-radius:12px;background:linear-gradient(135deg,#C07A58,#9A5C3E);color:#fff;text-align:center;font-family:'DM Sans',sans-serif;font-size:15px;font-weight:600;text-decoration:none;margin-bottom:14px">📦 ติดตามสถานะพัสดุ →</a>
   <div class="note-box">
     <strong>ขั้นตอนต่อไป:</strong><br>
     ทีมงานจะตรวจสอบสลิปและดำเนินการจัดส่งยา<br>
-    หากมีข้อสงสัยจะติดต่อกลับทาง <strong>Line</strong> ค่ะ 🌿
+    สามารถติดตามสถานะได้ที่ปุ่มด้านบน 📦<br>
+    หากมีข้อสงสัยติดต่อทาง <strong>Line</strong> ค่ะ 🌿
   </div>
 </div>
 
@@ -251,6 +258,8 @@
         document.getElementById("sName").textContent  = `${firstName} ${lastName}`;
         document.getElementById("sPhone").textContent = phone;
         document.getElementById("sAddr").textContent  = address;
+        document.getElementById("sOrderId").textContent = id;
+        document.getElementById("trackLink").href = `/track.html?id=${id}`;
       }, 400);
 
     } catch (err) {

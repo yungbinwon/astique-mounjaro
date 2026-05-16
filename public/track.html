@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Astique Clinic — ติดตามพัสดุ</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --cream:#FAF7F2; --blush:#EDD9C8; --rose:#C07A58;
+    --deep:#2E1F14; --sage:#6B9B82; --gold:#C4993E; --muted:#9A8478;
+    --alert:#C93B3B;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:'DM Sans',sans-serif; background:var(--cream); color:var(--deep); min-height:100vh; }
+  .header { background:var(--deep); padding:20px 20px 16px; display:flex; align-items:center; gap:14px; }
+  .logo { width:44px; height:44px; border-radius:50%; background:linear-gradient(135deg,var(--gold),var(--rose)); display:flex; align-items:center; justify-content:center; font-family:'Cormorant Garamond',serif; font-size:20px; color:#fff; font-weight:600; flex-shrink:0; }
+  .header h1 { font-family:'Cormorant Garamond',serif; font-size:19px; color:#FAF7F2; font-weight:400; }
+  .header p { font-size:10px; color:#EDD9C8; text-transform:uppercase; letter-spacing:.07em; margin-top:2px; }
+  .body { padding:20px 16px 48px; max-width:480px; margin:0 auto; }
+  .card { background:#fff; border-radius:16px; padding:20px 18px; margin-bottom:14px; box-shadow:0 2px 16px rgba(46,31,20,.07); }
+  .card-title { font-family:'Cormorant Garamond',serif; font-size:17px; font-weight:600; color:var(--deep); margin-bottom:16px; padding-bottom:10px; border-bottom:1px solid var(--blush); }
+  .card-title::before { content:""; display:inline-block; width:6px; height:6px; background:var(--rose); border-radius:50%; margin-right:8px; vertical-align:middle; }
+  .field { margin-bottom:12px; }
+  .field label { display:block; font-size:11px; font-weight:500; color:var(--rose); text-transform:uppercase; letter-spacing:.07em; margin-bottom:6px; }
+  .field input { width:100%; padding:12px 14px; border:1.5px solid var(--blush); border-radius:10px; background:var(--cream); color:var(--deep); font-family:'DM Sans',sans-serif; font-size:15px; outline:none; }
+  .field input:focus { border-color:var(--rose); }
+  .btn { width:100%; padding:13px; border-radius:12px; border:none; background:linear-gradient(135deg,var(--rose),#9A5C3E); color:#fff; font-size:15px; font-weight:600; font-family:'DM Sans',sans-serif; cursor:pointer; margin-top:4px; }
+  .btn:disabled { opacity:.6; }
+
+  /* Status timeline */
+  .timeline { display:flex; flex-direction:column; gap:0; }
+  .step { display:flex; gap:14px; align-items:flex-start; }
+  .step-indicator { display:flex; flex-direction:column; align-items:center; flex-shrink:0; }
+  .step-dot { width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:14px; flex-shrink:0; }
+  .step-dot.done { background:var(--sage); }
+  .step-dot.active { background:var(--rose); }
+  .step-dot.pending { background:var(--blush); }
+  .step-line { width:2px; height:28px; background:var(--blush); margin:2px 0; }
+  .step-line.done { background:var(--sage); }
+  .step-content { padding:4px 0 20px; }
+  .step-label { font-size:14px; font-weight:600; color:var(--deep); margin-bottom:2px; }
+  .step-label.pending { color:var(--muted); font-weight:400; }
+  .step-time { font-size:11px; color:var(--muted); }
+
+  /* Tracking box */
+  .tracking-box { background:rgba(107,155,130,.08); border:1.5px solid var(--sage); border-radius:14px; padding:18px; margin-bottom:14px; }
+  .tracking-title { font-size:12px; color:var(--sage); font-weight:600; text-transform:uppercase; letter-spacing:.05em; margin-bottom:10px; }
+  .tracking-number { font-family:'Cormorant Garamond',serif; font-size:26px; font-weight:600; color:var(--deep); margin-bottom:8px; letter-spacing:.02em; }
+  .tracking-btn { display:block; width:100%; padding:11px; border-radius:10px; border:1.5px solid var(--sage); background:transparent; color:var(--sage); font-family:'DM Sans',sans-serif; font-size:13px; font-weight:600; cursor:pointer; text-align:center; text-decoration:none; margin-bottom:8px; }
+  .copy-btn { display:block; width:100%; padding:11px; border-radius:10px; border:none; background:var(--sage); color:#fff; font-family:'DM Sans',sans-serif; font-size:13px; font-weight:600; cursor:pointer; text-align:center; }
+
+  /* Message box */
+  .msg-box { background:#fff; border:1.5px solid var(--blush); border-radius:14px; padding:16px; margin-bottom:14px; white-space:pre-wrap; font-size:13px; line-height:1.7; color:var(--deep); }
+  .copy-msg-btn { width:100%; padding:10px; border-radius:10px; border:1.5px solid var(--rose); background:transparent; color:var(--rose); font-family:'DM Sans',sans-serif; font-size:12px; font-weight:600; cursor:pointer; margin-top:8px; }
+
+  #searchWrap { }
+  #resultWrap { display:none; }
+  #notFoundWrap { display:none; padding:40px 0; text-align:center; color:var(--muted); }
+  .loading { text-align:center; padding:32px; color:var(--muted); font-size:14px; }
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="logo">A</div>
+  <div>
+    <h1>Astique Clinic</h1>
+    <p>ติดตามสถานะพัสดุ</p>
+  </div>
+</div>
+
+<div class="body">
+  <!-- Search -->
+  <div id="searchWrap">
+    <div class="card">
+      <div class="card-title">ติดตามออเดอร์ของคุณ</div>
+      <div class="field">
+        <label>หมายเลข Order หรือ เบอร์โทรศัพท์</label>
+        <input id="searchInput" type="text" placeholder="order_... หรือ 08X-XXX-XXXX" autocomplete="off">
+      </div>
+      <button class="btn" id="searchBtn" onclick="doSearch()">🔍 ค้นหา</button>
+    </div>
+  </div>
+
+  <div id="loadingWrap" class="loading" style="display:none">กำลังโหลด...</div>
+  <div id="notFoundWrap">
+    <div style="font-size:40px;margin-bottom:12px">🔍</div>
+    <div style="font-size:14px">ไม่พบข้อมูล Order<br>กรุณาตรวจสอบหมายเลขอีกครั้ง</div>
+    <button onclick="reset()" style="margin-top:16px;padding:10px 20px;border-radius:10px;border:1.5px solid var(--blush);background:transparent;color:var(--muted);font-family:'DM Sans',sans-serif;cursor:pointer">← ค้นหาใหม่</button>
+  </div>
+
+  <!-- Result -->
+  <div id="resultWrap">
+    <div class="card">
+      <div class="card-title">ข้อมูลออเดอร์</div>
+      <div style="margin-bottom:12px">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:2px">ชื่อ-นามสกุล</div>
+        <div style="font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:600" id="rName"></div>
+      </div>
+      <div style="margin-bottom:12px">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:2px">ที่อยู่จัดส่ง</div>
+        <div style="font-size:14px;line-height:1.5" id="rAddr"></div>
+      </div>
+      <div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:2px">วันที่สั่ง</div>
+        <div style="font-size:13px" id="rDate"></div>
+      </div>
+    </div>
+
+    <!-- Status timeline -->
+    <div class="card">
+      <div class="card-title">สถานะออเดอร์</div>
+      <div class="timeline" id="timeline"></div>
+    </div>
+
+    <!-- Tracking info (shown when shipped) -->
+    <div id="trackingWrap" style="display:none">
+      <div class="tracking-box">
+        <div class="tracking-title">📦 เลขพัสดุ</div>
+        <div class="tracking-number" id="trackingNumber"></div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:12px" id="courierName"></div>
+        <a id="trackingLink" href="#" target="_blank" class="tracking-btn">🔗 คลิกติดตามพัสดุ</a>
+        <button class="copy-btn" onclick="navigator.clipboard.writeText(document.getElementById('trackingNumber').textContent).then(()=>alert('คัดลอกเลขพัสดุแล้ว!'))">📋 คัดลอกเลขพัสดุ</button>
+      </div>
+
+      <!-- Doctor message to customer -->
+      <div class="card">
+        <div class="card-title">ข้อความจากคลินิก</div>
+        <div class="msg-box" id="doctorMsg"></div>
+        <button class="copy-msg-btn" onclick="navigator.clipboard.writeText(document.getElementById('doctorMsg').textContent).then(()=>alert('คัดลอกข้อความแล้ว!'))">📋 คัดลอกข้อความ</button>
+      </div>
+    </div>
+
+    <button onclick="reset()" style="width:100%;padding:11px;border-radius:10px;border:1.5px solid var(--blush);background:transparent;color:var(--muted);font-family:'DM Sans',sans-serif;cursor:pointer;font-size:13px">← ค้นหาใหม่</button>
+  </div>
+</div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
+  import { getFirestore, doc, getDoc, collection, getDocs, query, where } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey:            "AIzaSyDnNLsCZT9fEDv8kKzZYqfgnTn9v1DFlEc",
+    authDomain:        "astique-mounjaro.firebaseapp.com",
+    projectId:         "astique-mounjaro",
+    storageBucket:     "astique-mounjaro.firebasestorage.app",
+    messagingSenderId: "979724494631",
+    appId:             "1:979724494631:web:588ab72c09f2240177ab02",
+  };
+  const app = initializeApp(firebaseConfig);
+  const db  = getFirestore(app);
+
+  const STATUS_STEPS = [
+    { key:"paid",     label:"ได้รับสลิปแล้ว",       emoji:"🧾" },
+    { key:"shipping", label:"กำลังจัดส่ง",            emoji:"📦" },
+    { key:"done",     label:"จัดส่งเรียบร้อยแล้ว",   emoji:"✅" },
+  ];
+
+  const STATUS_ORDER = { paid:0, shipping:1, done:2 };
+
+  const NIM_MSG = (tracking, name) =>
+`📦 อัพเดตสถานะ : ส่งพัสดุแช่เย็นเรียบร้อยค่า 🙏🏻📮
+
+บริษัทขนส่ง NIM EXPRESS สาขา เชียงใหม่
+เลขพัสดุ : ${tracking}
+เบอร์โทร/LINEติดตามสินค้า 081-7155291
+หรือ คลิก
+https://www.nimexpress.com/web/Layout/index
+
+✨✨✨✨✨✨✨✨✨
+
+📌📌✨ เปิดตัวใหม่ล่าสุดแอป "ASTIQUE Weight Tracker" 💖💖
+
+ปักปากกาแล้วเหมือนมีหมอคอยดูแลอยู่ตลอด ✨
+สำหรับคนไข้ปักปากกากับ Astique ใช้ฟรีค่า 🫶🏻
+
+ติดตามได้ทั้ง :
+📉 น้ำหนักรายสัปดาห์
+💉 วันที่ปัก / ปริมาณยา
+🍽️ ความหิว
+✨ Progress การเปลี่ยนแปลง
+
+จะช่วยให้เห็นพัฒนาการชัดขึ้น และหมอสามารถช่วยประเมินการปรับโดสได้ง่ายขึ้นค่า 😊
+
+💖 เริ่มบันทึก journey ของตัวเองได้ที่นี่ค่า 👇🏻
+https://astique-mounjaro.vercel.app/#
+
+💛 ขอบพระคุณที่ไว้วางใจให้หมอดูแลค่า 💖🙏🏻🙏🏻`;
+
+  const INTER_MSG = (tracking, name) =>
+`📦 อัพเดตสถานะ : ส่งพัสดุแช่เย็นเรียบร้อยค่า 🙏🏻📮
+
+บริษัทขนส่ง INTER EXPRESS สาขา เชียงใหม่
+เลขพัสดุ : ${tracking}
+เบอร์โทร 083-6929565
+หรือ คลิกตามพัสดุ  https://iel.co.th/tracking/
+
+✨✨✨✨✨✨✨✨✨
+
+📌📌✨ เปิดตัวใหม่ล่าสุดแอป "ASTIQUE Weight Tracker" 💖💖
+
+ปักปากกาแล้วเหมือนมีหมอคอยดูแลอยู่ตลอด ✨
+สำหรับคนไข้ปักปากกากับ Astique ใช้ฟรีค่า 🫶🏻
+
+ติดตามได้ทั้ง :
+📉 น้ำหนักรายสัปดาห์
+💉 วันที่ปัก / ปริมาณยา
+🍽️ ความหิว
+✨ Progress การเปลี่ยนแปลง
+
+จะช่วยให้เห็นพัฒนาการชัดขึ้น และหมอสามารถช่วยประเมินการปรับโดสได้ง่ายขึ้นค่า 😊
+
+💖 เริ่มบันทึก journey ของตัวเองได้ที่นี่ค่า 👇🏻
+https://astique-mounjaro.vercel.app/#
+
+💛 ขอบพระคุณที่ไว้วางใจให้หมอดูแลค่า 💖🙏🏻🙏🏻`;
+
+  function fmtDate(d) {
+    return new Date(d).toLocaleDateString("th-TH", { day:"numeric", month:"long", year:"numeric", hour:"2-digit", minute:"2-digit" });
+  }
+
+  function renderTimeline(status) {
+    const curIdx = STATUS_ORDER[status] ?? 0;
+    const html = STATUS_STEPS.map((s, i) => {
+      const done = i < curIdx;
+      const active = i === curIdx;
+      const isLast = i === STATUS_STEPS.length - 1;
+      const dotClass = done ? "done" : active ? "active" : "pending";
+      const labelClass = (!done && !active) ? "pending" : "";
+      return `
+        <div class="step">
+          <div class="step-indicator">
+            <div class="step-dot ${dotClass}">${done ? "✓" : s.emoji}</div>
+            ${!isLast ? `<div class="step-line ${done ? "done" : ""}"></div>` : ""}
+          </div>
+          <div class="step-content">
+            <div class="step-label ${labelClass}">${s.label}</div>
+          </div>
+        </div>`;
+    }).join("");
+    document.getElementById("timeline").innerHTML = html;
+  }
+
+  function showOrder(order) {
+    document.getElementById("searchWrap").style.display = "none";
+    document.getElementById("resultWrap").style.display = "block";
+
+    document.getElementById("rName").textContent = order.name;
+    document.getElementById("rAddr").textContent = order.address;
+    document.getElementById("rDate").textContent = fmtDate(order.createdAt);
+
+    renderTimeline(order.status);
+
+    // Show tracking if shipped
+    if (order.trackingNumber && (order.status === "shipping" || order.status === "done")) {
+      document.getElementById("trackingWrap").style.display = "block";
+      document.getElementById("trackingNumber").textContent = order.trackingNumber;
+
+      const isNim = order.courier === "NIM";
+      document.getElementById("courierName").textContent = isNim ? "NIM EXPRESS สาขาเชียงใหม่" : "INTER EXPRESS สาขาเชียงใหม่";
+      document.getElementById("trackingLink").href = isNim
+        ? "https://www.nimexpress.com/web/Layout/index"
+        : "https://iel.co.th/tracking/";
+
+      const msg = isNim
+        ? NIM_MSG(order.trackingNumber, order.name)
+        : INTER_MSG(order.trackingNumber, order.name);
+      document.getElementById("doctorMsg").textContent = msg;
+    }
+  }
+
+  window.doSearch = async function() {
+    const val = document.getElementById("searchInput").value.trim();
+    if (!val) return;
+
+    document.getElementById("loadingWrap").style.display = "block";
+    document.getElementById("searchWrap").style.display = "none";
+    document.getElementById("notFoundWrap").style.display = "none";
+
+    try {
+      let order = null;
+
+      // Try by order ID first
+      if (val.startsWith("order_")) {
+        const snap = await getDoc(doc(db, "orders", val));
+        if (snap.exists()) order = snap.data();
+      }
+
+      // Try by phone
+      if (!order) {
+        const q = query(collection(db, "orders"), where("phone", "==", val));
+        const snap = await getDocs(q);
+        if (!snap.empty) {
+          // Get most recent
+          const docs = snap.docs.map(d => d.data()).sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
+          order = docs[0];
+        }
+      }
+
+      document.getElementById("loadingWrap").style.display = "none";
+
+      if (order) {
+        showOrder(order);
+      } else {
+        document.getElementById("notFoundWrap").style.display = "block";
+      }
+    } catch (err) {
+      console.error(err);
+      document.getElementById("loadingWrap").style.display = "none";
+      document.getElementById("searchWrap").style.display = "block";
+      alert("เกิดข้อผิดพลาด กรุณาลองใหม่");
+    }
+  };
+
+  window.reset = function() {
+    document.getElementById("searchInput").value = "";
+    document.getElementById("searchWrap").style.display = "block";
+    document.getElementById("resultWrap").style.display = "none";
+    document.getElementById("notFoundWrap").style.display = "none";
+    document.getElementById("trackingWrap").style.display = "none";
+  };
+
+  // Auto-search if order ID in URL
+  const urlParams = new URLSearchParams(window.location.search);
+  const orderId = urlParams.get("id");
+  if (orderId) {
+    document.getElementById("searchInput").value = orderId;
+    window.doSearch();
+  }
+
+  // Allow Enter key
+  document.getElementById("searchInput").addEventListener("keydown", e => {
+    if (e.key === "Enter") window.doSearch();
+  });
+</script>
+</body>
+</html>
