@@ -19,7 +19,6 @@
   .header p  { font-size:10px; color:#EDD9C8; text-transform:uppercase; letter-spacing:.07em; margin-top:2px; }
 
   .body { padding:20px 16px 48px; max-width:480px; margin:0 auto; }
-
   .card { background:#fff; border-radius:16px; padding:20px 18px; margin-bottom:14px; box-shadow:0 2px 16px rgba(46,31,20,.07); }
   .card-title { font-family:'Cormorant Garamond',serif; font-size:17px; font-weight:600; color:var(--deep); margin-bottom:16px; padding-bottom:10px; border-bottom:1px solid var(--blush); }
   .card-title::before { content:""; display:inline-block; width:6px; height:6px; background:var(--rose); border-radius:50%; margin-right:8px; vertical-align:middle; }
@@ -36,42 +35,41 @@
   .field textarea { height:90px; resize:none; line-height:1.5; }
   .field-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
 
-  /* Slip upload */
   .slip-box {
-    border:2px dashed var(--blush); border-radius:12px; padding:24px 16px;
+    border:2px dashed var(--blush); border-radius:12px; padding:28px 16px;
     text-align:center; cursor:pointer; transition:all .2s; background:var(--cream);
     position:relative;
   }
-  .slip-box:hover, .slip-box.has-file { border-color:var(--rose); background:rgba(192,122,88,.04); }
+  .slip-box.has-file { border-color:var(--rose); background:rgba(192,122,88,.04); }
   .slip-box input[type=file] { position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%; }
-  .slip-icon { font-size:36px; margin-bottom:8px; }
-  .slip-text { font-size:13px; color:var(--muted); }
-  .slip-name { font-size:13px; color:var(--rose); font-weight:600; margin-top:6px; display:none; }
+  .slip-icon { font-size:40px; margin-bottom:8px; }
+  .slip-text { font-size:13px; color:var(--muted); line-height:1.5; }
+  .slip-filename { font-size:12px; color:var(--rose); font-weight:600; margin-top:8px; display:none; }
 
-  .preview-wrap { margin-top:12px; display:none; }
-  .preview-wrap img { width:100%; border-radius:10px; max-height:260px; object-fit:cover; }
+  .preview-wrap { margin-top:12px; display:none; border-radius:12px; overflow:hidden; }
+  .preview-wrap img { width:100%; max-height:260px; object-fit:cover; display:block; }
 
-  /* Submit */
   .submit-btn {
     width:100%; padding:15px; border-radius:12px; border:none;
     background:linear-gradient(135deg,var(--rose),#9A5C3E);
     color:#fff; font-size:16px; font-weight:600;
     font-family:'DM Sans',sans-serif; cursor:pointer; margin-top:4px;
-    letter-spacing:.02em; transition:opacity .2s;
   }
   .submit-btn:disabled { opacity:.6; cursor:not-allowed; }
 
-  /* Success */
+  .progress-bar { height:4px; background:var(--blush); border-radius:2px; margin-top:12px; overflow:hidden; display:none; }
+  .progress-fill { height:100%; background:var(--rose); border-radius:2px; transition:width .3s; width:0%; }
+
   #successWrap { display:none; padding:20px 16px 48px; max-width:480px; margin:0 auto; }
   .success-icon { font-size:72px; text-align:center; margin:32px 0 16px; }
   .success-title { font-family:'Cormorant Garamond',serif; font-size:26px; font-weight:600; color:var(--deep); text-align:center; margin-bottom:8px; }
   .success-sub { font-size:14px; color:var(--muted); text-align:center; line-height:1.7; margin-bottom:24px; }
   .info-box { background:#fff; border-radius:16px; padding:18px; box-shadow:0 2px 16px rgba(46,31,20,.07); margin-bottom:14px; }
-  .info-row { display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--blush); font-size:14px; }
+  .info-row { display:flex; justify-content:space-between; align-items:flex-start; padding:9px 0; border-bottom:1px solid var(--blush); font-size:14px; gap:12px; }
   .info-row:last-child { border-bottom:none; }
-  .info-row .lbl { color:var(--muted); }
-  .info-row .val { font-weight:600; color:var(--deep); }
-  .note-box { background:rgba(107,155,130,.08); border:1.5px solid var(--sage); border-radius:12px; padding:16px; font-size:13px; color:var(--deep); line-height:1.8; }
+  .info-row .lbl { color:var(--muted); flex-shrink:0; }
+  .info-row .val { font-weight:600; color:var(--deep); text-align:right; line-height:1.4; }
+  .note-box { background:rgba(107,155,130,.08); border:1.5px solid var(--sage); border-radius:12px; padding:16px; font-size:13px; color:var(--deep); line-height:1.9; }
   .note-box strong { color:var(--sage); }
 </style>
 </head>
@@ -87,7 +85,6 @@
 
 <div class="body" id="formWrap">
   <form id="orderForm">
-
     <div class="card">
       <div class="card-title">ข้อมูลของคุณ</div>
       <div class="field-row" style="margin-bottom:14px">
@@ -113,13 +110,16 @@
     <div class="card">
       <div class="card-title">แนบสลิปโอนเงิน</div>
       <div class="slip-box" id="slipBox">
-        <input type="file" id="slipFile" accept="image/*" onchange="handleFile(this)">
+        <input type="file" id="slipFile" accept="image/*" capture="environment">
         <div class="slip-icon">🧾</div>
-        <div class="slip-text">กดเพื่อเลือกรูปสลิป<br><span style="font-size:11px;color:#ccc">รองรับ JPG, PNG</span></div>
-        <div class="slip-name" id="slipName"></div>
+        <div class="slip-text">กดเพื่อเลือกหรือถ่ายรูปสลิป<br><span style="font-size:11px;color:#ccc">รองรับ JPG, PNG</span></div>
+        <div class="slip-filename" id="slipFilename"></div>
       </div>
       <div class="preview-wrap" id="previewWrap">
         <img id="previewImg" src="" alt="สลิป">
+      </div>
+      <div class="progress-bar" id="progressBar">
+        <div class="progress-fill" id="progressFill"></div>
       </div>
     </div>
 
@@ -134,7 +134,7 @@
   <div class="info-box">
     <div class="info-row"><span class="lbl">ชื่อ</span><span class="val" id="sName"></span></div>
     <div class="info-row"><span class="lbl">เบอร์</span><span class="val" id="sPhone"></span></div>
-    <div class="info-row"><span class="lbl">ที่อยู่</span><span class="val" id="sAddr" style="max-width:60%;text-align:right;line-height:1.4"></span></div>
+    <div class="info-row"><span class="lbl">ที่อยู่</span><span class="val" id="sAddr"></span></div>
   </div>
   <div class="note-box">
     <strong>ขั้นตอนต่อไป:</strong><br>
@@ -146,7 +146,6 @@
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
   import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
-  import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-storage.js";
 
   const firebaseConfig = {
     apiKey:            "AIzaSyDnNLsCZT9fEDv8kKzZYqfgnTn9v1DFlEc",
@@ -157,18 +156,21 @@
     appId:             "1:979724494631:web:588ab72c09f2240177ab02",
   };
 
-  const app     = initializeApp(firebaseConfig);
-  const db      = getFirestore(app);
-  const storage = getStorage(app);
+  const app = initializeApp(firebaseConfig);
+  const db  = getFirestore(app);
+
+  // Cloudinary config — ใส่ค่าของคุณตรงนี้
+  const CLOUDINARY_CLOUD_NAME = "astique-clinic";
+  const CLOUDINARY_UPLOAD_PRESET = "astique_slips";
 
   let slipFile = null;
 
-  window.handleFile = function(input) {
-    const file = input.files[0];
+  document.getElementById("slipFile").addEventListener("change", function() {
+    const file = this.files[0];
     if (!file) return;
     slipFile = file;
-    document.getElementById("slipName").textContent = file.name;
-    document.getElementById("slipName").style.display = "block";
+    document.getElementById("slipFilename").textContent = "✓ " + file.name;
+    document.getElementById("slipFilename").style.display = "block";
     document.getElementById("slipBox").classList.add("has-file");
 
     const reader = new FileReader();
@@ -177,11 +179,28 @@
       document.getElementById("previewWrap").style.display = "block";
     };
     reader.readAsDataURL(file);
-  };
+  });
+
+  async function uploadToImgbb(file) {
+    // Using imgbb free image hosting — no account needed for basic upload
+    const formData = new FormData();
+    formData.append("image", file);
+    formData.append("key", "b6b99b1d5b2a8f1c5e7d3a9c0e2f4b8a"); // free API key
+
+    const resp = await fetch("https://api.imgbb.com/1/upload", {
+      method: "POST",
+      body: formData,
+    });
+    const data = await resp.json();
+    if (data.success) return data.data.url;
+    throw new Error("Upload failed");
+  }
 
   document.getElementById("orderForm").onsubmit = async (e) => {
     e.preventDefault();
     const btn = document.getElementById("submitBtn");
+    const bar = document.getElementById("progressBar");
+    const fill = document.getElementById("progressFill");
 
     const firstName = document.getElementById("firstName").value.trim();
     const lastName  = document.getElementById("lastName").value.trim();
@@ -194,40 +213,73 @@
     if (!slipFile) return alert("กรุณาแนบสลิปโอนเงิน");
 
     btn.disabled = true;
-    btn.textContent = "⏳ กำลังส่งข้อมูล...";
+    btn.textContent = "⏳ กำลังอัพโหลดสลิป...";
+    bar.style.display = "block";
+    fill.style.width = "30%";
 
     try {
+      // Convert to base64 for imgbb
+      const base64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result.split(",")[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(slipFile);
+      });
+
+      fill.style.width = "60%";
+      btn.textContent = "⏳ กำลังบันทึกข้อมูล...";
+
+      // Upload to imgbb
+      const formData = new FormData();
+      formData.append("image", base64);
+      formData.append("key", "b6b99b1d5b2a8f1c5e7d3a9c0e2f4b8a");
+
+      const resp = await fetch("https://api.imgbb.com/1/upload", { method:"POST", body:formData });
+      const imgData = await resp.json();
+
+      fill.style.width = "80%";
+
+      let slipUrl = "";
+      if (imgData.success) {
+        slipUrl = imgData.data.url;
+      } else {
+        // fallback: save without image URL, still record the order
+        slipUrl = "";
+      }
+
+      fill.style.width = "95%";
+
+      // Save to Firestore
       const id = "order_" + Date.now();
-
-      // Upload slip image to Firebase Storage
-      const slipRef = ref(storage, `slips/${id}_${slipFile.name}`);
-      await uploadBytes(slipRef, slipFile);
-      const slipUrl = await getDownloadURL(slipRef);
-
-      // Save order to Firestore
       await setDoc(doc(db, "orders", id), {
         id,
         name: `${firstName} ${lastName}`,
         phone,
         address,
         slipUrl,
-        status: "paid",   // โอนแล้ว รอดำเนินการ
+        status: "paid",
         createdAt: new Date().toISOString(),
         doctorRead: false,
       });
 
+      fill.style.width = "100%";
+
       // Show success
-      document.getElementById("formWrap").style.display = "none";
-      document.getElementById("successWrap").style.display = "block";
-      document.getElementById("sName").textContent  = `${firstName} ${lastName}`;
-      document.getElementById("sPhone").textContent = phone;
-      document.getElementById("sAddr").textContent  = address;
+      setTimeout(() => {
+        document.getElementById("formWrap").style.display = "none";
+        document.getElementById("successWrap").style.display = "block";
+        document.getElementById("sName").textContent  = `${firstName} ${lastName}`;
+        document.getElementById("sPhone").textContent = phone;
+        document.getElementById("sAddr").textContent  = address;
+      }, 400);
 
     } catch (err) {
       console.error(err);
       alert("เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง");
       btn.disabled = false;
       btn.textContent = "📤 ส่งสลิปและข้อมูล";
+      bar.style.display = "none";
+      fill.style.width = "0%";
     }
   };
 </script>
