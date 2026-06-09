@@ -83,6 +83,8 @@ function getStatus(records,idx) {
   if(idx===0) return "first";
   const days=daysBetween(records[idx-1].date,records[idx].date)||7;
   const diff=records[idx-1].weight-records[idx].weight;
+  // ถ้ากรอกถี่กว่า 7 วัน ไม่ประเมินผล แสดงแค่ neutral
+  if(days<7) return diff>=0?"neutral_ok":"neutral_gain";
   const perWeek=(diff/days)*7;
   if(diff>=0&&perWeek>=0.5) return "good";
   if(diff>0) return "low";
@@ -92,9 +94,10 @@ function hasAlert(recs) {
   if(recs.length<2) return false;
   const last=recs[recs.length-1], prev=recs[recs.length-2];
   const days=daysBetween(prev.date,last.date)||7;
+  // ถ้ากรอกถี่กว่า 7 วัน ไม่แจ้งเตือน
+  if(days<7) return false;
   const diff=prev.weight-last.weight;
   const perWeek=(diff/days)*7;
-  // alert only if weight went up OR per-week loss < 0.5
   return diff<0 || perWeek<0.5;
 }
 function hasRedFlag(r) {
@@ -149,6 +152,7 @@ function DoseLabel(props) {
 function WeightAdvice({records,idx}) {
   if(idx===0) return null;
   const days=daysBetween(records[idx-1].date,records[idx].date)||7;
+  if(days<7) return null;
   const diff=records[idx-1].weight-records[idx].weight;
   const perWeek=(diff/days)*7;
   if(diff<0) return <div style={{marginTop:8,padding:"10px 12px",background:"rgba(201,59,59,0.07)",borderRadius:10,fontSize:12,color:C.alert,lineHeight:1.6}}>⚠️ <strong>น้ำหนักขึ้น {Math.abs(diff).toFixed(1)} กก.</strong><br/>พิจารณาปรับพฤติกรรม หรือปรึกษาคุณหมอก่อนปรับยาค่ะ</div>;
