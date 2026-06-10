@@ -280,19 +280,37 @@ function RecordForm({patientName,hasHistory,onSave,onViewHistory,onDelete,saving
 
 // ── NameScreen ────────────────────────────────────────────
 function NameScreen({onSubmit}) {
-  const [first,setFirst]=useState(""); const [last,setLast]=useState("");
+  const saved = localStorage.getItem("astique_patient_name")||"";
+  const [first,setFirst]=useState(saved.split(" ")[0]||"");
+  const [last,setLast]=useState(saved.split(" ").slice(1).join(" ")||"");
+
+  function submit() {
+    if(!first.trim()||!last.trim()) return;
+    const name = `${first.trim()} ${last.trim()}`;
+    localStorage.setItem("astique_patient_name", name);
+    onSubmit(name);
+  }
+
   return <div style={{padding:"18px 14px"}}>
     <div style={{textAlign:"center",padding:"32px 0 24px"}}>
       <div style={{fontSize:48,marginBottom:12}}>🌿</div>
       <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:24,color:C.deep,marginBottom:6}}>ยินดีต้อนรับ</div>
       <div style={{fontSize:14,color:C.muted,lineHeight:1.6}}>Astique Clinic — ติดตามผล Mounjaro<br/>กรุณากรอกชื่อ-นามสกุลเพื่อเริ่มต้น</div>
     </div>
-    <div style={cardSt}>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
-        <div><label style={labelSt}>ชื่อ</label><input style={inputSt} placeholder="ชื่อ" value={first} autoFocus onChange={e=>setFirst(e.target.value)}/></div>
-        <div><label style={labelSt}>นามสกุล</label><input style={inputSt} placeholder="นามสกุล" value={last} onChange={e=>setLast(e.target.value)} onKeyDown={e=>e.key==="Enter"&&first.trim()&&last.trim()&&onSubmit(`${first.trim()} ${last.trim()}`)}/></div>
+    {saved&&<div style={{background:"rgba(107,155,130,0.08)",border:`1.5px solid ${C.sage}`,borderRadius:12,padding:"14px 16px",marginBottom:14,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+      <div>
+        <div style={{fontSize:11,color:C.sage,fontWeight:600,marginBottom:2}}>บันทึกชื่อไว้แล้ว</div>
+        <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:18,fontWeight:600,color:C.deep}}>{saved}</div>
       </div>
-      <button style={btnSt} onClick={()=>first.trim()&&last.trim()&&onSubmit(`${first.trim()} ${last.trim()}`)}>เริ่มต้นบันทึก →</button>
+      <button onClick={()=>onSubmit(saved)} style={{padding:"10px 18px",borderRadius:10,border:"none",background:C.sage,color:"#fff",fontFamily:"'DM Sans',sans-serif",fontSize:13,fontWeight:600,cursor:"pointer"}}>เข้าสู่ระบบ →</button>
+    </div>}
+    <div style={cardSt}>
+      <div style={{fontSize:12,color:C.muted,marginBottom:12}}>{saved?"หรือเปลี่ยนชื่อ:":"กรอกชื่อของคุณ:"}</div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
+        <div><label style={labelSt}>ชื่อ</label><input style={inputSt} placeholder="ชื่อ" value={first} onChange={e=>setFirst(e.target.value)}/></div>
+        <div><label style={labelSt}>นามสกุล</label><input style={inputSt} placeholder="นามสกุล" value={last} onChange={e=>setLast(e.target.value)} onKeyDown={e=>e.key==="Enter"&&submit()}/></div>
+      </div>
+      <button style={btnSt} onClick={submit}>เริ่มต้นบันทึก →</button>
     </div>
   </div>;
 }
