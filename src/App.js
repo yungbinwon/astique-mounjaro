@@ -81,11 +81,11 @@ function fmtDateShort(d) {
 function daysBetween(a,b) { return Math.round((new Date(b)-new Date(a))/86400000); }
 function getStatus(records,idx) {
   if(idx===0) return "first";
-  const days=daysBetween(records[idx-1].date,records[idx].date)||7;
+  const rawDays=daysBetween(records[idx-1].date,records[idx].date);
   const diff=records[idx-1].weight-records[idx].weight;
-  // ถ้ากรอกถี่กว่า 7 วัน ไม่ประเมินผล แสดงแค่ neutral
-  if(days<7) return diff>=0?"neutral_ok":"neutral_gain";
-  const perWeek=(diff/days)*7;
+  // ถ้าบันทึกถี่กว่า 7 วัน ไม่ประเมินผล
+  if(rawDays<7) return diff>=0?"neutral_ok":"neutral_gain";
+  const perWeek=(diff/rawDays)*7;
   if(diff>=0&&perWeek>=0.5) return "good";
   if(diff>0) return "low";
   return "gain";
@@ -93,11 +93,11 @@ function getStatus(records,idx) {
 function hasAlert(recs) {
   if(recs.length<2) return false;
   const last=recs[recs.length-1], prev=recs[recs.length-2];
-  const days=daysBetween(prev.date,last.date)||7;
-  // ถ้ากรอกถี่กว่า 7 วัน ไม่แจ้งเตือน
-  if(days<7) return false;
+  const rawDays=daysBetween(prev.date,last.date);
+  // แจ้งเตือนเฉพาะเมื่อบันทึกห่างกัน >= 7 วัน
+  if(rawDays<7) return false;
   const diff=prev.weight-last.weight;
-  const perWeek=(diff/days)*7;
+  const perWeek=(diff/rawDays)*7;
   return diff<0 || perWeek<0.5;
 }
 function hasRedFlag(r) {
@@ -151,10 +151,11 @@ function DoseLabel(props) {
 
 function WeightAdvice({records,idx}) {
   if(idx===0) return null;
-  const days=daysBetween(records[idx-1].date,records[idx].date)||7;
-  if(days<7) return null;
+  const rawDays=daysBetween(records[idx-1].date,records[idx].date);
+  if(rawDays<7) return null;
   const diff=records[idx-1].weight-records[idx].weight;
-  const perWeek=(diff/days)*7;
+  const perWeek=(diff/rawDays)*7;
+  const days=rawDays;
   if(diff<0) return <div style={{marginTop:8,padding:"10px 12px",background:"rgba(201,59,59,0.07)",borderRadius:10,fontSize:12,color:C.alert,lineHeight:1.6}}>⚠️ <strong>น้ำหนักขึ้น {Math.abs(diff).toFixed(1)} กก.</strong><br/>พิจารณาปรับพฤติกรรม หรือปรึกษาคุณหมอก่อนปรับยาค่ะ</div>;
   if(perWeek>=0.5) return <div style={{marginTop:8,padding:"10px 12px",background:"rgba(107,155,130,0.1)",borderRadius:10,fontSize:12,color:C.sage,lineHeight:1.6}}>✅ <strong>น้ำหนักลงดี ({diff.toFixed(1)} กก. ใน {days} วัน)</strong><br/>แนะนำใช้โดสเท่าเดิมต่อไปค่ะ</div>;
   return <div style={{marginTop:8,padding:"10px 12px",background:"rgba(201,59,59,0.07)",borderRadius:10,fontSize:12,color:C.alert,lineHeight:1.6}}>🔴 <strong>น้ำหนักลงช้า ({diff.toFixed(1)} กก. ใน {days} วัน)</strong><br/>พิจารณาปรับพฤติกรรมหรือปรับโดสยาขึ้น <em>ปรึกษาคุณหมอก่อนเพิ่มยาค่ะ</em></div>;
@@ -336,10 +337,10 @@ function ChartView({patientName,records}) {
   const totalLoss=records.length>=2?records[0].weight-records[records.length-1].weight:null;
   const alertRecs=records.filter((r,i)=>{
     if(i===0) return false;
-    const days=daysBetween(records[i-1].date,r.date)||7;
-    if(days<7) return false; // ไม่นับถ้าบันทึกถี่กว่า 7 วัน
+    const rawDays=daysBetween(records[i-1].date,r.date);
+    if(rawDays<7) return false;
     const diff=records[i-1].weight-r.weight;
-    const perWeek=(diff/days)*7;
+    const perWeek=(diff/rawDays)*7;
     return diff<0||perWeek<0.5;
   });
 
