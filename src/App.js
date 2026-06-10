@@ -334,7 +334,14 @@ function ChartView({patientName,records}) {
   }) : [];
 
   const totalLoss=records.length>=2?records[0].weight-records[records.length-1].weight:null;
-  const alertRecs=records.filter((r,i)=>i>0&&records[i-1].weight-r.weight<0.5);
+  const alertRecs=records.filter((r,i)=>{
+    if(i===0) return false;
+    const days=daysBetween(records[i-1].date,r.date)||7;
+    if(days<7) return false; // ไม่นับถ้าบันทึกถี่กว่า 7 วัน
+    const diff=records[i-1].weight-r.weight;
+    const perWeek=(diff/days)*7;
+    return diff<0||perWeek<0.5;
+  });
 
   return <div style={{padding:"18px 14px"}}>
     <div style={cardSt}>
