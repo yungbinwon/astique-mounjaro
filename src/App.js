@@ -198,7 +198,7 @@ function RecordDetail({r}) {
 }
 
 // ── RecordForm ────────────────────────────────────────────
-function RecordForm({patientName,hasHistory,onSave,onViewHistory,saving,showToast,initialData,isEdit}) {
+function RecordForm({patientName,hasHistory,onSave,onViewHistory,onDelete,saving,showToast,initialData,isEdit}) {
   const [date,setDate]=useState(initialData?.date||todayStr());
   const [weight,setWeight]=useState(initialData?.weight?.toString()||"");
   const [dose,setDose]=useState(initialData?.dose||"");
@@ -270,6 +270,10 @@ function RecordForm({patientName,hasHistory,onSave,onViewHistory,saving,showToas
       </div>
       <button style={{...btnSt,opacity:saving?0.7:1}} onClick={submit} disabled={saving}>{saving?"กำลังบันทึก...":"✦ บันทึก"}</button>
       {isEdit&&<button style={{...secBtnSt,width:"100%",marginTop:8,textAlign:"center"}} onClick={onViewHistory}>ยกเลิก</button>}
+      {isEdit&&onDelete&&<button
+        onClick={()=>{if(window.confirm("ลบข้อมูลวันนี้?"))onDelete(initialData.date);}}
+        style={{width:"100%",marginTop:8,padding:"11px",borderRadius:12,border:`1.5px solid ${C.alert}`,background:"transparent",color:C.alert,fontSize:14,fontFamily:"'DM Sans',sans-serif",cursor:"pointer",fontWeight:600}}
+      >🗑️ ลบข้อมูลนี้</button>}
     </div>
   </div>;
 }
@@ -923,6 +927,15 @@ export default function App() {
     setPhase("history");
   }
 
+  async function handleDeleteRecord(date) {
+    const newRecords=records.filter(r=>r.date!==date);
+    const ok=await fbSet(patientName,{name:patientName,records:newRecords});
+    if(!ok) return showToast("ลบไม่สำเร็จ ลองใหม่นะคะ");
+    setRecords(newRecords);
+    showToast("✓ ลบข้อมูลแล้ว");
+    setPhase("history");
+  }
+
   const tabBtnSt=(active)=>({flex:1,padding:"9px 6px",borderRadius:8,fontSize:12,fontWeight:500,border:`1.5px solid ${active?C.rose:"rgba(255,255,255,0.15)"}`,background:active?C.rose:"transparent",color:active?"#fff":"#EDD9C8",fontFamily:"'DM Sans',sans-serif",cursor:"pointer",transition:"all .2s"});
 
   return <>
@@ -949,7 +962,7 @@ export default function App() {
         {tab==="patient"&&phase==="name"&&<NameScreen onSubmit={handleNameSubmit}/>}
         {tab==="patient"&&phase==="form"&&<RecordForm patientName={patientName} hasHistory={records.length>0} onSave={handleSave} onViewHistory={()=>setPhase("history")} saving={saving} showToast={showToast}/>}
         {tab==="patient"&&phase==="history"&&<HistoryView patientName={patientName} records={records} onAddNew={()=>setPhase("form")} onEdit={r=>{setEditRecord(r);setPhase("edit");}}/>}
-        {tab==="patient"&&phase==="edit"&&<RecordForm patientName={patientName} hasHistory={true} onSave={handleSave} onViewHistory={()=>setPhase("history")} saving={saving} showToast={showToast} initialData={editRecord} isEdit={true}/>}
+        {tab==="patient"&&phase==="edit"&&<RecordForm patientName={patientName} hasHistory={true} onSave={handleSave} onViewHistory={()=>setPhase("history")} onDelete={handleDeleteRecord} saving={saving} showToast={showToast} initialData={editRecord} isEdit={true}/>}
         {tab==="chart"&&<ChartView patientName={patientName} records={records}/>}
       </>}
 
