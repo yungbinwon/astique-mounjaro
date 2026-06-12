@@ -81,20 +81,10 @@ function fmtDateShort(d) {
 function daysBetween(a,b) { return Math.round((new Date(b)-new Date(a))/86400000); }
 function getStatus(records,idx) {
   if(idx===0) return "first";
-  const r = records[idx];
-  // หา record ก่อนหน้าที่ห่างกัน >= 7 วัน
-  let compareRec = null;
-  for(let j=idx-1; j>=0; j--) {
-    if(daysBetween(records[j].date, r.date) >= 7) { compareRec=records[j]; break; }
-  }
-  // ถ้ายังไม่มีข้อมูล 7 วัน แสดง neutral
-  if(!compareRec) {
-    const diff=records[idx-1].weight-r.weight;
-    return diff>=0?"neutral_ok":"neutral_gain";
-  }
-  const rawDays=daysBetween(compareRec.date,r.date);
-  const diff=compareRec.weight-r.weight;
-  const perWeek=(diff/rawDays)*7;
+  const days=daysBetween(records[idx-1].date,records[idx].date);
+  const diff=records[idx-1].weight-records[idx].weight;
+  if(days<7) return diff>=0?"neutral_ok":"neutral_gain";
+  const perWeek=(diff/days)*7;
   if(diff>=0&&perWeek>=0.5) return "good";
   if(diff>0) return "low";
   return "gain";
@@ -102,19 +92,12 @@ function getStatus(records,idx) {
 function hasAlert(recs) {
   if(recs.length<2) return false;
   const last=recs[recs.length-1];
-  // หา record ที่ห่างจาก record ล่าสุด >= 7 วัน
-  let compareRec = null;
-  for(let i=recs.length-2; i>=0; i--) {
-    if(daysBetween(recs[i].date, last.date) >= 7) {
-      compareRec = recs[i];
-      break;
-    }
-  }
-  if(!compareRec) return false; // ยังไม่มีข้อมูล 7 วัน
-  const rawDays = daysBetween(compareRec.date, last.date);
-  const diff = compareRec.weight - last.weight;
-  const perWeek = (diff/rawDays)*7;
-  return diff<0 || perWeek<0.5;
+  const prev=recs[recs.length-2];
+  const days=daysBetween(prev.date,last.date);
+  if(days<7) return false;
+  const diff=prev.weight-last.weight;
+  const perWeek=(diff/days)*7;
+  return diff<0||perWeek<0.5;
 }
 function hasRedFlag(r) {
   return RED_TRIGGERS.some(t=>(r.foodTags||[]).includes(t))||
@@ -167,16 +150,10 @@ function DoseLabel(props) {
 
 function WeightAdvice({records,idx}) {
   if(idx===0) return null;
-  const r=records[idx];
-  let compareRec=null;
-  for(let j=idx-1;j>=0;j--){
-    if(daysBetween(records[j].date,r.date)>=7){compareRec=records[j];break;}
-  }
-  if(!compareRec) return null;
-  const rawDays=daysBetween(compareRec.date,r.date);
-  const diff=compareRec.weight-r.weight;
-  const perWeek=(diff/rawDays)*7;
-  const days=rawDays;
+  const days=daysBetween(records[idx-1].date,records[idx].date);
+  if(days<7) return null;
+  const diff=records[idx-1].weight-records[idx].weight;
+  const perWeek=(diff/days)*7;
   if(diff<0) return <div style={{marginTop:8,padding:"10px 12px",background:"rgba(201,59,59,0.07)",borderRadius:10,fontSize:12,color:C.alert,lineHeight:1.6}}>⚠️ <strong>น้ำหนักขึ้น {Math.abs(diff).toFixed(1)} กก.</strong><br/>พิจารณาปรับพฤติกรรม หรือปรึกษาคุณหมอก่อนปรับยาค่ะ</div>;
   if(perWeek>=0.5) return <div style={{marginTop:8,padding:"10px 12px",background:"rgba(107,155,130,0.1)",borderRadius:10,fontSize:12,color:C.sage,lineHeight:1.6}}>✅ <strong>น้ำหนักลงดี ({diff.toFixed(1)} กก. ใน {days} วัน)</strong><br/>แนะนำใช้โดสเท่าเดิมต่อไปค่ะ</div>;
   return <div style={{marginTop:8,padding:"10px 12px",background:"rgba(201,59,59,0.07)",borderRadius:10,fontSize:12,color:C.alert,lineHeight:1.6}}>🔴 <strong>น้ำหนักลงช้า ({diff.toFixed(1)} กก. ใน {days} วัน)</strong><br/>พิจารณาปรับพฤติกรรมหรือปรับโดสยาขึ้น <em>ปรึกษาคุณหมอก่อนเพิ่มยาค่ะ</em></div>;
@@ -380,15 +357,10 @@ function ChartView({patientName,records}) {
   const totalLoss=records.length>=2?records[0].weight-records[records.length-1].weight:null;
   const alertRecs=records.filter((r,i)=>{
     if(i===0) return false;
-    // หา record ก่อนหน้าที่ห่างกัน >= 7 วัน
-    let compareRec = null;
-    for(let j=i-1; j>=0; j--) {
-      if(daysBetween(records[j].date, r.date) >= 7) { compareRec=records[j]; break; }
-    }
-    if(!compareRec) return false;
-    const rawDays=daysBetween(compareRec.date,r.date);
-    const diff=compareRec.weight-r.weight;
-    const perWeek=(diff/rawDays)*7;
+    const days=daysBetween(records[i-1].date,r.date);
+    if(days<7) return false;
+    const diff=records[i-1].weight-r.weight;
+    const perWeek=(diff/days)*7;
     return diff<0||perWeek<0.5;
   });
 
