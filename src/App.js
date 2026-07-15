@@ -81,9 +81,17 @@ function fmtDateShort(d) {
 function daysBetween(a,b) { return Math.round((new Date(b)-new Date(a))/86400000); }
 function getStatus(records,idx) {
   if(idx===0) return "first";
-  const days=daysBetween(records[idx-1].date,records[idx].date);
-  const diff=records[idx-1].weight-records[idx].weight;
-  if(days<7) return diff>=0?"neutral_ok":"neutral_gain";
+  const r=records[idx];
+  let compareRec=null;
+  for(let j=idx-1;j>=0;j--){
+    if(daysBetween(records[j].date,r.date)>=7){compareRec=records[j];break;}
+  }
+  if(!compareRec){
+    const diff=records[idx-1].weight-r.weight;
+    return diff>=0?"neutral_ok":"neutral_gain";
+  }
+  const days=daysBetween(compareRec.date,r.date);
+  const diff=compareRec.weight-r.weight;
   const perWeek=(diff/days)*7;
   if(diff>=0&&perWeek>=0.5) return "good";
   if(diff>0) return "low";
@@ -92,10 +100,13 @@ function getStatus(records,idx) {
 function hasAlert(recs) {
   if(recs.length<2) return false;
   const last=recs[recs.length-1];
-  const prev=recs[recs.length-2];
-  const days=daysBetween(prev.date,last.date);
-  if(days<7) return false;
-  const diff=prev.weight-last.weight;
+  let compareRec=null;
+  for(let i=recs.length-2;i>=0;i--){
+    if(daysBetween(recs[i].date,last.date)>=7){compareRec=recs[i];break;}
+  }
+  if(!compareRec) return false;
+  const days=daysBetween(compareRec.date,last.date);
+  const diff=compareRec.weight-last.weight;
   const perWeek=(diff/days)*7;
   return diff<0||perWeek<0.5;
 }
@@ -150,9 +161,13 @@ function DoseLabel(props) {
 
 function WeightAdvice({records,idx}) {
   if(idx===0) return null;
-  const days=daysBetween(records[idx-1].date,records[idx].date);
-  if(days<7) return null;
-  const diff=records[idx-1].weight-records[idx].weight;
+  let compareRec=null;
+  for(let j=idx-1;j>=0;j--){
+    if(daysBetween(records[j].date,records[idx].date)>=7){compareRec=records[j];break;}
+  }
+  if(!compareRec) return null;
+  const days=daysBetween(compareRec.date,records[idx].date);
+  const diff=compareRec.weight-records[idx].weight;
   const perWeek=(diff/days)*7;
   if(diff<0) return <div style={{marginTop:8,padding:"10px 12px",background:"rgba(201,59,59,0.07)",borderRadius:10,fontSize:12,color:C.alert,lineHeight:1.6}}>⚠️ <strong>น้ำหนักขึ้น {Math.abs(diff).toFixed(1)} กก.</strong><br/>พิจารณาปรับพฤติกรรม หรือปรึกษาคุณหมอก่อนปรับยาค่ะ</div>;
   if(perWeek>=0.5) return <div style={{marginTop:8,padding:"10px 12px",background:"rgba(107,155,130,0.1)",borderRadius:10,fontSize:12,color:C.sage,lineHeight:1.6}}>✅ <strong>น้ำหนักลงดี ({diff.toFixed(1)} กก. ใน {days} วัน)</strong><br/>แนะนำใช้โดสเท่าเดิมต่อไปค่ะ</div>;
@@ -357,9 +372,13 @@ function ChartView({patientName,records}) {
   const totalLoss=records.length>=2?records[0].weight-records[records.length-1].weight:null;
   const alertRecs=records.filter((r,i)=>{
     if(i===0) return false;
-    const days=daysBetween(records[i-1].date,r.date);
-    if(days<7) return false;
-    const diff=records[i-1].weight-r.weight;
+    let compareRec=null;
+    for(let j=i-1;j>=0;j--){
+      if(daysBetween(records[j].date,r.date)>=7){compareRec=records[j];break;}
+    }
+    if(!compareRec) return false;
+    const days=daysBetween(compareRec.date,r.date);
+    const diff=compareRec.weight-r.weight;
     const perWeek=(diff/days)*7;
     return diff<0||perWeek<0.5;
   });
